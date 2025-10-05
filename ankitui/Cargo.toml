@@ -1,0 +1,62 @@
+[package]
+name = "ankitui"
+version = "0.1.0"
+edition = "2021"
+authors = ["AnkiTUI Team"]
+description = "A terminal-based spaced repetition learning system compatible with Anki's SM-2 algorithm"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-username/ankitui"
+homepage = "https://github.com/your-username/ankitui"
+keywords = ["anki", "terminal", "tui", "learning", "spaced-repetition"]
+categories = ["command-line-utilities", "education"]
+readme = "README.md"
+
+[dependencies]
+ankitui-core = { path = "../ankitui-core" }
+ankitui-tui = { path = "../ankitui-tui" }
+
+# CLI specific dependencies
+clap = { workspace = true }
+env_logger = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+csv = { workspace = true }
+toml = { workspace = true }
+dirs = { workspace = true }
+log = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+
+[[bin]]
+name = "ankitui"
+path = "src/main.rs"
+
+[package.metadata.deb]
+maintainer = "AnkiTUI Team <team@ankitui.com>"
+copyright = "2024, AnkiTUI Team"
+license-file = ["LICENSE", "4"]
+extended-description = """\
+AnkiTUI is a terminal-based spaced repetition learning system compatible with Anki's SM-2 algorithm.
+It provides a complete TUI interface for reviewing flashcards, managing decks, and tracking learning progress."""
+depends = "$auto"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/ankitui", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/ankitui/README", "644"],
+    ["LICENSE", "usr/share/doc/ankitui/LICENSE", "644"],
+    ["scripts/completion.sh", "etc/bash_completion.d/ankitui", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/ankitui", dest = "/usr/bin/ankitui", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/ankitui/README", mode = "644" },
+    { source = "LICENSE", dest = "/usr/share/doc/ankitui/LICENSE", mode = "644" },
+]

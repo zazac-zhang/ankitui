@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Post-installation script for AnkiTUI
+
+# Set up shell completion
+echo "Setting up shell completion..."
+
+# bash completion
+if [ -d "/etc/bash_completion.d" ]; then
+    cat > /etc/bash_completion.d/ankitui << 'BASH_COMPLETION'
+_ankitui_completion() {
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="review import export stats edit config deck db --help --version --deck --limit"
+
+    if [[ ${cur} == * ]] ; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+}
+complete -F _ankitui_completion ankitui
+BASH_COMPLETION
+fi
+
+# zsh completion
+if [ -d "/usr/local/share/zsh-completions" ]; then
+    cat > /usr/local/share/zsh-completions/_ankitui << 'ZSH_COMPLETION'
+#compdef ankitui
+_ankitui() {
+    _arguments -C \
+        '1: :->command' \
+        '*:: :->args' \
+        && ret=0
+
+    case $state in
+        command)
+            _values 'ankitui commands' \
+                'review[Start review session]' \
+                'import[Import cards]' \
+                'export[Export cards]' \
+                'stats[Show statistics]' \
+                'edit[Edit decks or cards]' \
+                'config[Configuration management]' \
+                'deck[Deck management]' \
+                'db[Database utilities]' \
+                '--help[Show help]' \
+                '--version[Show version]'
+            ;;
+        args)
+            case $line[1] in
+                review)
+                    _arguments '--deck[Specify deck]:deck:' '--limit[Set card limit]:limit:'
+                    ;;
+            esac
+            ;;
+    esac
+
+    return ret
+}
+_ankitui
+ZSH_COMPLETION
+fi
+
+# Create symlink for command-line usage
+if [ ! -L "/usr/local/bin/ankitui" ]; then
+    ln -s "/Applications/AnkiTUI.app/Contents/MacOS/ankitui" "/usr/local/bin/ankitui" 2>/dev/null || true
+fi
+
+echo "AnkiTUI installation completed successfully!"

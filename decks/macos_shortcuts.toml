@@ -1,0 +1,177 @@
+[deck]
+name = "macOS 常用快捷键"
+description = "macOS系统中最常用的键盘快捷键，帮助提高工作效率"
+uuid = "550e8400-e29b-41d4-a716-446655440100"
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440101"
+front = "如何在 macOS 中复制选中的文本？"
+back = "⌘ + C\n\nCommand + C\n\n这是最常用的复制快捷键"
+tags = ["基础操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440102"
+front = "如何在 macOS 中粘贴已复制的内容？"
+back = "⌘ + V\n\nCommand + V\n\n将剪贴板内容粘贴到当前位置"
+tags = ["基础操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440103"
+front = "如何在 macOS 中剪切选中的文本？"
+back = "⌘ + X\n\nCommand + X\n\n删除选中文本并将其复制到剪贴板"
+tags = ["基础操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440104"
+front = "如何在 macOS 中撤销上一步操作？"
+back = "⌘ + Z\n\nCommand + Z\n\n撤销最近的一次操作，可多次使用"
+tags = ["基础操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440105"
+front = "如何在 macOS 中重做撤销的操作？"
+back = "⌘ + ⇧ + Z\n\nCommand + Shift + Z\n\n重做被撤销的操作"
+tags = ["基础操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440106"
+front = "如何在 macOS 中全选当前页面的所有内容？"
+back = "⌘ + A\n\nCommand + A\n\n选择当前文档或窗口中的所有内容"
+tags = ["选择操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440107"
+front = "如何在 macOS 中查找文本？"
+back = "⌘ + F\n\nCommand + F\n\n打开搜索框，在当前文档中查找特定文本"
+tags = ["搜索操作", "文本编辑"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440108"
+front = "如何在 macOS 中保存当前文件？"
+back = "⌘ + S\n\nCommand + S\n\n保存当前正在编辑的文件"
+tags = ["文件操作", "编辑器"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440109"
+front = "如何在 macOS 中强制退出应用程序？"
+back = "⌘ + ⌥ + Esc\n\nCommand + Option + Esc\n\n打开强制退出窗口，选择无响应的应用程序"
+tags = ["系统操作", "故障排除"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440110"
+front = "如何在 macOS 中切换应用程序？"
+back = "⌘ + Tab\n\nCommand + Tab\n\n在打开的应用程序之间切换"
+tags = ["窗口管理", "多任务"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440111"
+front = "如何在 macOS 中隐藏当前应用程序？"
+back = "⌘ + H\n\nCommand + H\n\n隐藏当前活动的应用程序窗口"
+tags = ["窗口管理", "多任务"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440112"
+front = "如何在 macOS 中最小化当前窗口？"
+back = "⌘ + M\n\nCommand + M\n\n最小化当前活动窗口到Dock"
+tags = ["窗口管理", "界面操作"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440113"
+front = "如何在 macOS 中关闭当前窗口？"
+back = "⌘ + W\n\nCommand + W\n\n关闭当前活动的窗口（不退出应用程序）"
+tags = ["窗口管理", "界面操作"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440114"
+front = "如何在 macOS 中退出当前应用程序？"
+back = "⌘ + Q\n\nCommand + Q\n\n完全退出当前活动的应用程序"
+tags = ["应用程序操作", "系统管理"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440115"
+front = "如何在 macOS 中新建文件夹？"
+back = "⌘ + ⇧ + N\n\nCommand + Shift + N\n\n在当前位置创建新文件夹"
+tags = ["文件操作", "Finder"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440116"
+front = "如何在 macOS 中截取整个屏幕？"
+back = "⌘ + ⇧ + 3\n\nCommand + Shift + 3\n\n将整个屏幕截图并保存到桌面"
+tags = ["截图操作", "系统工具"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440117"
+front = "如何在 macOS 中截取选定区域？"
+back = "⌘ + ⇧ + 4\n\nCommand + Shift + 4\n\n鼠标变为十字，拖动选择要截图的区域"
+tags = ["截图操作", "系统工具"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440118"
+front = "如何在 macOS 中打开Spotlight搜索？"
+back = "⌘ + 空格\n\nCommand + 空格键\n\n快速打开Spotlight搜索，查找文件、应用程序或执行计算"
+tags = ["搜索操作", "系统功能"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "550e8400-e29b-41d4-a716-446655440119"
+front = "如何在 macOS 中锁定屏幕？"
+back = "⌘ + ⌃ + Q\n\nCommand + Control + Q\n\n立即锁定屏幕，需要密码才能重新访问"
+tags = ["安全操作", "系统管理"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"

@@ -1,0 +1,167 @@
+{
+  "name": "VSCode 常用快捷键",
+  "created_at": "2025-01-01T00:00:00Z",
+  "modified_at": "2025-01-01T00:00:00Z",
+  "cards": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440201",
+      "front": "如何在 VSCode 中快速打开文件？",
+      "back": "Ctrl + P (Windows/Linux) 或 Cmd + P (macOS)\n\n这是 VSCode 最强大的功能之一，可以快速搜索并打开项目中的任何文件。",
+      "tags": ["文件操作", "导航"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440202",
+      "front": "如何在 VSCode 中显示命令面板？",
+      "back": "Ctrl + Shift + P (Windows/Linux) 或 Cmd + Shift + P (macOS)\n\n命令面板可以访问所有可用的命令，包括那些没有菜单选项的命令。",
+      "tags": ["核心功能", "命令"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440203",
+      "front": "如何在 VSCode 中切换侧边栏？",
+      "back": "Ctrl + B (Windows/Linux) 或 Cmd + B (macOS)\n\n快速显示或隐藏文件资源管理器侧边栏，获得更大的编码空间。",
+      "tags": ["界面操作", "布局"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440204",
+      "front": "如何在 VSCode 中切换集成终端？",
+      "back": "Ctrl + ` (反引号) (Windows/Linux) 或 Cmd + ` (macOS)\n\n快速打开或关闭集成终端面板。",
+      "tags": ["终端操作", "开发工具"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440205",
+      "front": "如何在 VSCode 中分割编辑器？",
+      "back": "Ctrl + \\ (Windows/Linux) 或 Cmd + \\ (macOS)\n\n将当前编辑器分割为两个面板，便于同时查看多个文件。",
+      "tags": ["布局操作", "多窗口"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440206",
+      "front": "如何在 VSCode 中跳转到定义？",
+      "back": "F12 或 Ctrl + Click (Windows/Linux) 或 F12 或 Cmd + Click (macOS)\n\n直接跳转到变量、函数或类的定义位置，支持多种编程语言。",
+      "tags": ["代码导航", "智能编辑"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440207",
+      "front": "如何在 VSCode 中显示所有符号？",
+      "back": "Ctrl + Shift + O (Windows/Linux) 或 Cmd + Shift + O (macOS)\n\n显示当前文件中的所有符号（函数、变量、类等），可以快速跳转到特定符号。",
+      "tags": ["代码导航", "符号浏览"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440208",
+      "front": "如何在 VSCode 中搜索文件？",
+      "back": "Ctrl + Shift + F (Windows/Linux) 或 Cmd + Shift + F (macOS)\n\n在整个工作区中搜索文本内容，支持正则表达式和替换功能。",
+      "tags": ["搜索操作", "文本查找"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440209",
+      "front": "如何在 VSCode 中格式化文档？",
+      "back": "Shift + Alt + F (Windows/Linux) 或 Shift + Option + F (macOS)\n\n自动格式化当前文档，需要安装相应的格式化工具扩展。",
+      "tags": ["代码格式化", "代码质量"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440210",
+      "front": "如何在 VSCode 中注释/取消注释代码？",
+      "back": "Ctrl + / (Windows/Linux) 或 Cmd + / (macOS)\n\n快速注释或取消注释选中的代码行，支持单行和多行注释。",
+      "tags": ["代码编辑", "注释操作"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440211",
+      "front": "如何在 VSCode 中复制行？",
+      "back": "Shift + Alt + ↑/↓ (Windows/Linux) 或 Shift + Option + ↑/↓ (macOS)\n\n复制当前行或选中的行到上方或下方。",
+      "tags": ["代码编辑", "行操作"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440212",
+      "front": "如何在 VSCode 中移动行？",
+      "back": "Alt + ↑/↓ (Windows/Linux) 或 Option + ↑/↓ (macOS)\n\n将当前行或选中的行向上或向下移动。",
+      "tags": ["代码编辑", "行操作"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440213",
+      "front": "如何在 VSCode 中折叠/展开代码？",
+      "back": "Ctrl + Shift + [ (折叠) 或 Ctrl + Shift + ] (展开)\nmacOS: Cmd + Option + [ (折叠) 或 Cmd + Option + ] (展开)\n折叠或展开代码块，提高代码可读性。",
+      "tags": ["代码编辑", "代码组织"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440214",
+      "front": "如何在 VSCode 中切换文件？",
+      "back": "Ctrl + Tab (Windows/Linux) 或 Ctrl + Tab (macOS)\n\n在最近打开的文件之间切换，也可以使用 Ctrl + 1/2/3/4 (macOS: Cmd + 1/2/3/4) 切换到特定编辑器组。",
+      "tags": ["文件导航", "窗口切换"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440215",
+      "front": "如何在 VSCode 中打开设置？",
+      "back": "Ctrl + , (逗号) (Windows/Linux) 或 Cmd + , (macOS)\n\n或者使用命令面板搜索'Preferences: Open Settings (JSON)'打开JSON格式设置。",
+      "tags": ["配置操作", "个性化"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440216",
+      "front": "如何在 VSCode 中打开扩展面板？",
+      "back": "Ctrl + Shift + X (Windows/Linux) 或 Cmd + Shift + X (macOS)\n\n浏览、安装和管理VSCode扩展的地方。",
+      "tags": ["扩展管理", "功能增强"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440217",
+      "front": "如何在 VSCode 中运行代码？",
+      "back": "Ctrl + F5 (不调试运行) 或 F5 (调试运行)\nmacOS: Cmd + F5 (不调试运行) 或 F5 (调试运行)\n运行当前文件或启动调试器。",
+      "tags": ["运行调试", "开发流程"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440218",
+      "front": "如何在 VSCode 中显示问题面板？",
+      "back": "Ctrl + Shift + M (Windows/Linux) 或 Cmd + Shift + M (macOS)\n\n显示代码中的错误、警告和问题信息。",
+      "tags": ["错误处理", "代码质量"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440219",
+      "front": "如何在 VSCode 中切换主题？",
+      "back": "Ctrl + K Ctrl + T (Windows/Linux) 或 Cmd + K Cmd + T (macOS)\n\n快速在明暗主题之间切换，或选择更多主题选项。",
+      "tags": ["界面定制", "个性化"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440220",
+      "front": "如何在 VSCode 中显示/隐藏小地图？",
+      "back": "Ctrl + Shift + P 打开命令面板，输入'minimap'\n或直接在设置中搜索'minimap'进行配置。\n小地图提供代码的鸟瞰视图。",
+      "tags": ["界面功能", "导航辅助"],
+      "created_at": "2025-01-01T00:00:00Z",
+      "modified_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}

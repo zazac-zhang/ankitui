@@ -1,0 +1,20 @@
+[package]
+name = "ankitui-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+dirs = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+csv = { workspace = true }
+async-trait = { workspace = true }
+tempfile = { workspace = true }

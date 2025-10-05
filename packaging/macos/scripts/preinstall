@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Pre-installation script for AnkiTUI
+
+# Check if previous version exists
+if [ -d "/Applications/AnkiTUI.app" ]; then
+    echo "Previous version of AnkiTUI found. Backing up user data..."
+
+    # Backup user data before replacement
+    if [ -d "$HOME/.config/ankitui" ]; then
+        cp -r "$HOME/.config/ankitui" "$HOME/.config/ankitui.backup.$(date +%Y%m%d_%H%M%S)"
+    fi
+fi
+
+exit 0
