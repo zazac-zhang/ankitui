@@ -9,6 +9,7 @@
 use ankitui_core::config::ConfigManager;
 use ankitui_core::core::stats_engine::StatsEngine;
 use ankitui_core::core::DeckManager;
+use ankitui_core::data::{Card, CardContent, CardState, Deck, MediaType};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
@@ -1154,7 +1155,7 @@ impl CliApp {
             };
 
             // Create the card
-            let card_content = crate::data::models::CardContent {
+            let card_content = CardContent {
                 id: uuid::Uuid::new_v4(),
                 front: front.trim().to_string(),
                 back: back.trim().to_string(),
@@ -1229,7 +1230,7 @@ impl CliApp {
         };
 
         // Create updated card content
-        let updated_content = crate::data::models::CardContent {
+        let updated_content = CardContent {
             id: card.content.id,
             front,
             back,
@@ -1241,7 +1242,7 @@ impl CliApp {
         };
 
         // Update the card
-        let updated_card = crate::data::models::Card {
+        let updated_card = Card {
             content: updated_content,
             state: card.state.clone(),
         };
@@ -1307,7 +1308,7 @@ impl CliApp {
 
             if updated {
                 updated_content.modified_at = chrono::Utc::now();
-                let updated_card = crate::data::models::Card {
+                let updated_card = Card {
                     content: updated_content,
                     state: card.state.clone(),
                 };
@@ -1325,7 +1326,7 @@ impl CliApp {
     async fn browse_cards(
         &self,
         deck_uuid: &uuid::Uuid,
-        cards: &[crate::data::models::Card],
+        cards: &[Card],
         deck_manager: &DeckManager,
     ) -> Result<()> {
         if cards.is_empty() {
@@ -1406,8 +1407,8 @@ impl CliApp {
     /// Show deck information
     async fn show_deck_info(
         &self,
-        deck: &crate::data::models::Deck,
-        cards: &[crate::data::models::Card],
+        deck: &Deck,
+        cards: &[Card],
     ) -> Result<()> {
         self.print_info(&format!("Deck Information: {}", deck.name));
         self.print_info(&format!("UUID: {}", deck.uuid));
@@ -1428,19 +1429,19 @@ impl CliApp {
         let total_cards = cards.len();
         let new_cards = cards
             .iter()
-            .filter(|c| matches!(c.state.state, crate::data::models::CardState::New))
+            .filter(|c| matches!(c.state.state, CardState::New))
             .count();
         let learning_cards = cards
             .iter()
-            .filter(|c| matches!(c.state.state, crate::data::models::CardState::Learning))
+            .filter(|c| matches!(c.state.state, CardState::Learning))
             .count();
         let review_cards = cards
             .iter()
-            .filter(|c| matches!(c.state.state, crate::data::models::CardState::Review))
+            .filter(|c| matches!(c.state.state, CardState::Review))
             .count();
         let relearning_cards = cards
             .iter()
-            .filter(|c| matches!(c.state.state, crate::data::models::CardState::Relearning))
+            .filter(|c| matches!(c.state.state, CardState::Relearning))
             .count();
 
         self.print_info(&format!("Total cards: {}", total_cards));
@@ -1590,7 +1591,7 @@ impl CliApp {
         self.print_info("Resetting configuration to defaults...");
 
         // Create default configuration
-        let default_config = crate::config::Config::default();
+        let default_config = ankitui_core::config::Config::default();
 
         // Save default config
         self.config_manager
@@ -2028,9 +2029,9 @@ impl CliApp {
                         .map_err(|e| anyhow::anyhow!("Invalid card ID: {}", e))?;
 
                     let media_type_enum = match media_type.to_lowercase().as_str() {
-                        "audio" => crate::data::models::MediaType::Audio,
-                        "image" => crate::data::models::MediaType::Image,
-                        "video" => crate::data::models::MediaType::Video,
+                        "audio" => MediaType::Audio,
+                        "image" => MediaType::Image,
+                        "video" => MediaType::Video,
                         _ => {
                             self.print_error(&format!("Invalid media type: {}. Use: audio, image, or video", media_type));
                             return Ok(1);
@@ -2524,7 +2525,7 @@ impl CliApp {
                 Vec::new()
             };
 
-            let card_content = crate::data::models::CardContent {
+            let card_content = CardContent {
                 id: uuid::Uuid::new_v4(),
                 front: front.to_string(),
                 back: back.to_string(),
@@ -2596,7 +2597,7 @@ impl CliApp {
                 Vec::new()
             };
 
-            let card_content = crate::data::models::CardContent {
+            let card_content = CardContent {
                 id: uuid::Uuid::new_v4(),
                 front: front.to_string(),
                 back: back.to_string(),
@@ -2661,7 +2662,7 @@ impl CliApp {
                 continue;
             }
 
-            let card_content = crate::data::models::CardContent {
+            let card_content = CardContent {
                 id: uuid::Uuid::new_v4(),
                 front: json_card.front.trim().to_string(),
                 back: json_card.back.trim().to_string(),
