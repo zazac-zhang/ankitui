@@ -4,245 +4,105 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AnkiTUI is a terminal-based spaced repetition learning system compatible with Anki's SM-2 algorithm. It's built with a 4-layer architecture: TUI (presentation), Core (business logic), Data (persistence), and Util (utilities/configuration).
+AnkiTUI is a terminal-based spaced repetition learning system compatible with Anki's SM-2 algorithm. It's built with a 3-layer architecture: Core (business logic), Data (persistence), and TUI-V2 (modern terminal interface).
+
+### Current Project Structure
+
+```
+ankitui/
+├── ankitui-core/           # 核心业务逻辑层
+│   ├── src/
+│   │   ├── core/          # SM-2算法、牌组管理、会话控制等
+│   │   ├── data/          # 数据持久化、模型定义
+│   │   └── config/        # 配置管理
+│   └── Cargo.toml
+├── ankitui-tui/        # 现代化终端UI层
+│   ├── src/
+│   │   ├── ui/
+│   │   │   └── components/screens/  # 页面组件
+│   │   │       ├── common/          # 通用对话框等
+│   │   │       ├── study/           # 学习相关页面
+│   │   │       ├── deck/            # 牌组管理页面
+│   │   │       ├── stats/           # 统计页面
+│   │   │       ├── settings/        # 设置页面
+│   │   │       └── menu/            # 主菜单
+│   │   ├── domain/                  # 应用状态和视图模型
+│   │   │   ├── app_state.rs        # UI应用状态定义
+│   │   │   └── viewmodels.rs       # UI视图模型
+│   │   └── lib.rs
+│   └── Cargo.toml
+├── ankitui/                 # 主应用程序入口
+├── docs/                    # 文档目录
+└── Cargo.toml              # Workspace配置
+```
 
 ## Build and Development Commands
 
 ```bash
-# Build the project
+# 构建整个项目
 cargo build
 
-# Build optimized release version
+# 构建优化版本
 cargo build --release
 
-# Run tests
+# 运行测试
 cargo test
 
-# Run tests with output
+# 运行测试并显示输出
 cargo test -- --nocapture
 
-# Run specific test
-cargo test test_name
-
-# Check code without building
+# 检查代码（不构建）
 cargo check
 
-# Format code
+# 快速检查错误
+cargo check --message-format short | grep "error"
+
+# 格式化代码
 cargo fmt
 
-# Run linter
+# 运行代码检查
 cargo clippy
 
-# Run the application
+# 运行应用程序
 cargo run
 
-# Run with specific arguments
-cargo run -- review --deck deck_name
+# 运行特定包的测试
+cargo test -p ankitui-core
+cargo test -p ankitui-tui
 
-# Generate documentation
-cargo doc --open
+# 检查特定包的编译
+cargo check -p ankitui-core
+cargo check -p ankitui-tui
 
-# Clean build artifacts
+# 清理构建产物
 cargo clean
+
 ```
 
 ## Project Architecture
 
-The codebase follows a strict 4-layer architecture with recent modular refactoring:
+## 项目结构
 
-### 1. Data Layer (`src/data/`)
-- **ContentStore**: TOML-based storage for user-defined content (cards, decks)
-- **StateStore**: SQLite-based storage for system-maintained state (SM-2 algorithm data)
-- **SyncAdapter**: Coordinates between content and state stores
-- **Models**: Core data structures (Card, Deck, CardContent, CardStateData)
+1、合理拆分 crate，保持模块职责单一
+2、mod.rs 和 lib.rs 文件要包含模块说明文档
+3、先查看现有依赖的功能，避免重复实现
+4、workspace 内的 crate 导入导出都要显式声明
 
-### 2. Core Layer (`src/core/`)
-- **DeckManager**: Complete deck lifecycle management and card operations
-- **Scheduler**: SM-2 spaced repetition algorithm implementation
-- **SessionController**: Review session lifecycle and card queue management
-- **StatsEngine**: Learning statistics and visualization data generation
+## 代码规范
 
-### 3. TUI Layer (`src/tui/`) - Recently Refactored
-- **App**: Legacy application state (being replaced by ApplicationState)
-- **ApplicationState**: New centralized state management with error integration
-- **Components**: Legacy UI components (being replaced)
-- **UI Components** (`ui_components/`): New modular component system
-  - **MainMenuComponent**: Main menu interface
-  - **CardReviewComponent**: Card review interface
-  - **Dialogs**: Confirmation and message dialogs
-- **State Management**:
-  - **AppStateManager**: Centralized UI state transitions
-  - **StateTransition**: State change tracking with context
-  - **SystemMessage**: Application-wide messaging system
-- **Error Handling**:
-  - **ErrorIntegration**: Unified error processing with auto-recovery
-  - **TUIError**: Structured error types with recovery actions
-  - **UserMessage**: User-friendly error presentation
-- **Events**: Keyboard input handling and event loop
-- **Visualization**: ASCII charts and progress indicators
-- **Performance**: Performance monitoring and optimization
-- **Search**: Advanced card and deck search functionality
-- **Settings Panels**: Modular settings configuration interface
+1、合理使用派生宏，减少样板代码
+2、优先使用第三方库，其次 workspace 内 crate，最后自己实现
+3、避免过度使用 getter/setter，优先考虑直接访问字段或使用构建器模式
 
-### 4. Config Layer (`src/config/`) - Recently Separated
-- **ConfigManager**: TOML configuration file management
-- **Scheduler Config**: SM-2 algorithm parameters
-- **UI Config**: Theme and display settings
-- **Daily Config**: Daily study limits and goals
-- **Shortcuts Config**: Keyboard shortcut customization
-- **Data Config**: Data directory and storage settings
+## 测试策略
 
-### 5. Util Layer (`src/util/`)
-- **CLI**: Command-line interface with comprehensive subcommands
-- **Error**: Legacy error handling (being integrated into TUI error system)
+1、只编写核心业务逻辑的必要测试，避免过度测试
 
-## Key Data Models
+## 调试修复
 
-### Card Structure
-- **CardContent** (TOML): `front`, `back`, `tags`, `media`, `custom`
-- **CardStateData** (SQLite): `due`, `interval`, `ease_factor`, `reps`, `lapses`, `state`
-- **Card**: Combined view of content + state data
+1、使用 `cargo check --message-format short | grep error` 快速定位关键错误
+2、大量错误通常由同一根本问题引起，需深度分析
 
-### Core Enums
-- **Rating**: Again(0), Hard(1), Good(2), Easy(3)
-- **CardState**: New, Learning, Review, Relearning
-- **AppState**: Legacy TUI application states (MainMenu, DeckSelection, Review, etc.)
-- **AppUIState**: New centralized UI state management
-- **ErrorSeverity**: Critical, Error, Warning, Info
-- **RecoveryAction**: Auto-recovery actions for error handling
+## 编译构建
 
-## Development Workflow
-
-1. **Code Organization**: Respect the 5-layer architecture - avoid cross-layer dependencies
-2. **State Management**: Use the new `ApplicationState` for centralized state management
-3. **Error Handling**: Use the integrated error system with `TUIError` and auto-recovery
-4. **UI Components**: Use the modular `ui_components/` system for new UI development
-5. **Async Operations**: Most core operations are async - use `.await` appropriately
-6. **Testing**: Each module has comprehensive unit tests - maintain high test coverage
-7. **Configuration**: Use modular config system in `src/config/` for all settings
-
-## Testing Strategy
-
-- Unit tests for each module in their respective files
-- Integration tests are in the same files as the modules they test
-- Use `tempfile` for creating isolated test environments
-- Mock data is used but real integration is tested where possible
-
-## Dependencies and Tech Stack
-
-- **TUI**: ratatui + crossterm for terminal interface
-- **Database**: SQLite with sqlx for async operations
-- **Serialization**: serde + toml for configuration and content
-- **CLI**: clap for command-line argument parsing
-- **Async**: tokio runtime
-- **Error Handling**: anyhow + thiserror
-- **UUID**: uuid for unique identifiers
-- **Time**: chrono for date/time handling
-
-## Current Project Status
-
-The project is in active development with architectural refactoring:
-- ✅ Data layer with dual storage (TOML + SQLite)
-- ✅ Core business logic with SM-2 algorithm
-- ✅ Legacy TUI interface with ASCII visualizations
-- ✅ Util layer with configuration and CLI
-- 🔄 **Active Refactoring**: TUI layer modernization with:
-  - New centralized state management (`ApplicationState`)
-  - Modular UI components system (`ui_components/`)
-  - Integrated error handling with auto-recovery
-  - Separated configuration modules
-  - Performance monitoring and optimization
-  - Advanced search functionality
-  - Settings panels interface
-
-## Common Development Tasks
-
-### Adding New Features
-1. Determine which layer the feature belongs to
-2. Implement the core logic with tests
-3. Add UI components using the new modular system
-4. Update configuration modules if applicable
-5. Add CLI commands if required
-
-### Database Schema Changes
-1. Modify `StateStore` migration logic
-2. Update `models.rs` if changing data structures
-3. Ensure backward compatibility
-4. Update relevant tests
-
-### Adding New UI Components (Recommended Approach)
-1. Create component in `src/tui/ui_components/`
-2. Add component to `src/tui/ui_components/mod.rs`
-3. Integrate with `ApplicationState` for state management
-4. Use the error integration system for error handling
-5. Add to appropriate settings panels if needed
-
-### Legacy UI Components (Deprecated)
-1. Create component in `src/tui/components.rs` (only for maintenance)
-2. Add rendering logic to `App::render`
-3. Add event handling in `App::handle_action`
-4. Update `AppState` enum if needed
-
-### Working with the New State Management
-1. Use `ApplicationState` instead of `App` for new development
-2. Leverage `AppStateManager` for state transitions
-3. Use `SystemMessage` for application-wide notifications
-4. Implement error handling with `ErrorIntegration` and auto-recovery
-
-## Configuration
-
-Configuration is stored in `~/.config/ankitui/config.toml` and includes modular settings:
-- **Scheduler parameters**: SM-2 algorithm settings (`src/config/scheduler.rs`)
-- **UI themes**: Display settings and themes (`src/config/ui.rs`)
-- **Keyboard shortcuts**: Customizable key bindings (`src/config/shortcuts.rs`)
-- **Daily limits**: Study goals and daily limits (`src/config/daily.rs`)
-- **Data paths**: Directory and storage settings (`src/config/data.rs`)
-
-## CLI Commands
-
-The application supports comprehensive command-line interface:
-- `review` (default): Start review session
-- `import`: Import cards from various formats (CSV, JSON, Anki APKG)
-- `export`: Export cards to files (CSV, JSON, TOML)
-- `stats`: Display learning statistics and progress
-- `edit`: Edit decks or cards interactively
-- `config`: Configuration management and validation
-- `deck`: Deck management operations (create, delete, rename)
-- `db`: Database maintenance utilities
-
-## Development Environment
-
-### Running the Application
-- **TUI Mode**: `cargo run` (default interactive mode)
-- **CLI Mode**: `cargo run -- [command]` (command-line mode)
-- **Specific Deck**: `cargo run -- review --deck deck_name`
-- **Debug Mode**: `RUST_LOG=debug cargo run`
-
-### Code Quality Tools
-- **Formatting**: `cargo fmt` (code formatting)
-- **Linting**: `cargo clippy` (error detection)
-- **Type Checking**: `cargo check` (fast compilation check)
-- **Documentation**: `cargo doc --open` (generate and view docs)
-
-### Testing
-- **All Tests**: `cargo test`
-- **With Output**: `cargo test -- --nocapture`
-- **Specific Test**: `cargo test test_name`
-- **Single Module**: `cargo test path::to::module`
-
-## Code Refactoring Requirements
-
-### Refactoring Principles
-1. **Clean Architecture** - No backward compatibility, complete restructure
-2. **Early Development** - Project is in early stage, allow breaking changes
-4. **Clear Module Boundaries** - Establish clean dependencies and interfaces
-
-
-## Fix build errors
-
-### use short message format
-cargo check --message-format short | grep error
-
-### guild
-not create new content to replace errror content
-deepthink before fixing build errors
+1、只关注编译错误，忽略 lint 警告
