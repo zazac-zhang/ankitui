@@ -10,6 +10,7 @@ use crate::utils::error::{TuiError, TuiResult};
 use ankitui_core::{DeckManager, Scheduler, SessionController};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 /// Application configuration
 #[derive(Debug, Clone)]
@@ -473,7 +474,59 @@ impl App {
                 }
             }
             CommandType::StartStudySessionDefault => {
-                self.start_study_session().await?;
+                let deck_id = {
+                    let state = self.state_store.read().await;
+                    state.get_state().selected_deck_id
+                };
+                if deck_id.is_some() {
+                    self.start_study_session().await?;
+                } else if let Some(deck_id) = self.get_selected_deck_from_list().await? {
+                    {
+                        let state_store = self.state_store.read().await;
+                        state_store.set_selected_deck(Some(deck_id))?;
+                    }
+                    self.start_study_session().await?;
+                }
+            }
+            CommandType::SelectPreviousDeck => {
+                self.handle_deck_selection_up().await?;
+            }
+            CommandType::SelectNextDeck => {
+                self.handle_deck_selection_down().await?;
+            }
+            CommandType::NavigateTo(screen) => {
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(screen)?;
+            }
+            CommandType::SkipCurrentCard => {
+                self.study_service_mut().skip_current_card().await?;
+            }
+            CommandType::RefreshScreen => {
+                self.refresh_core_data().await?;
+            }
+            CommandType::ScrollStatsUp | CommandType::ScrollStatsDown => {
+                // Statistics screen scrolling (placeholder)
+            }
+            CommandType::Select => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+                match current_screen {
+                    crate::ui::state::store::Screen::UiSettings => {
+                        let idx = self.state_store.read().await.get_state()
+                            .ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        if idx == 2 || idx == 3 {
+                            let key = if idx == 2 { "auto_advance" } else { "show_progress" };
+                            let state_store = self.state_store.read().await;
+                            state_store.update_state(|state| {
+                                let val = state.ui_state.get(key).map(|s| s == "true").unwrap_or(false);
+                                state.ui_state.insert(key.to_string(), (!val).to_string());
+                            }).ok();
+                        }
+                    }
+                    _ => {}
+                }
             }
             CommandType::EndStudySession => {
                 self.end_study_session().await?;
@@ -1092,6 +1145,21 @@ impl App {
     }
 
     // Deck selection navigation methods
+
+    /// Get the UUID of the currently highlighted deck in the list
+    async fn get_selected_deck_from_list(&self) -> TuiResult<Option<Uuid>> {
+        let decks = self.deck_service.get_all_decks().await?;
+        let state = self.state_store.read().await;
+        let idx = state.get_state().deck_list_selected.unwrap_or(0);
+        drop(state);
+
+        if idx < decks.len() {
+            let (deck, _) = &decks[idx];
+            Ok(Some(deck.uuid))
+        } else {
+            Ok(None)
+        }
+    }
 
     /// Handle deck selection up navigation
     async fn handle_deck_selection_up(&mut self) -> TuiResult<()> {
