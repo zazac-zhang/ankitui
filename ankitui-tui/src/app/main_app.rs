@@ -1,12 +1,12 @@
 //! Main application implementation
 
 use crate::domain::{DeckService, StatisticsService, StudyService};
-use crate::ui::event::handler::EventHandler;
 use crate::ui::navigator::Navigator;
 use crate::ui::render::Renderer;
 use crate::ui::state::store::StateStore;
 use crate::ui::theme::Theme;
 use crate::utils::error::{TuiError, TuiResult};
+use ankitui_core::config::ConfigManager;
 use ankitui_core::{DeckManager, Scheduler, SessionController};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -40,9 +40,11 @@ impl Default for AppConfig {
 pub struct App {
     config: AppConfig,
     pub state_store: Arc<RwLock<StateStore>>,
-    pub event_handler: EventHandler,
     renderer: crate::ui::render::DefaultRenderer,
     navigator: Navigator,
+
+    // Configuration manager for persistence
+    config_manager: Option<ConfigManager>,
 
     // Core business logic components
     deck_manager: Arc<DeckManager>,
@@ -69,6 +71,11 @@ impl std::fmt::Debug for App {
 impl App {
     /// Create a new application instance with configuration
     pub async fn new(config: AppConfig) -> TuiResult<Self> {
+        Self::with_config_manager(config, None).await
+    }
+
+    /// Create a new application instance with optional config manager for persistence
+    pub async fn with_config_manager(config: AppConfig, config_manager: Option<ConfigManager>) -> TuiResult<Self> {
         let state_store = Arc::new(RwLock::new(StateStore::new()));
 
         // Initialize data paths
@@ -106,9 +113,9 @@ impl App {
         Ok(Self {
             config,
             state_store: Arc::clone(&state_store),
-            event_handler: EventHandler::new(crate::ui::state::store::AppState::default()),
             renderer: crate::ui::render::DefaultRenderer::new(),
             navigator: Navigator::new(),
+            config_manager,
             deck_manager,
             session_controller,
             scheduler,
@@ -268,6 +275,11 @@ impl App {
             }
         }
 
+        // Persist settings to config file
+        if let Err(e) = self.persist_settings().await {
+            log::warn!("Failed to persist settings during shutdown: {}", e);
+        }
+
         // Commit any pending data changes
         if let Err(e) = self.save_state().await {
             log::error!("Failed to save state during shutdown: {}", e);
@@ -403,19 +415,6 @@ impl App {
         Ok(())
     }
 
-    /// Handle user input events
-    pub async fn handle_input(&mut self, input: crate::ui::event::Event) -> TuiResult<()> {
-        // Update event handler with current state
-        let current_state = self.state_store.read().await.get_state().clone();
-        self.event_handler.update_state(current_state);
-
-        // Process the event
-        let command = self.event_handler.handle_event(input);
-
-        // Execute the command
-        self.execute_command(command).await
-    }
-
     /// Execute application commands
     pub async fn execute_command(&mut self, command: crate::ui::event::Command) -> TuiResult<()> {
         use crate::ui::event::CommandType;
@@ -456,19 +455,16 @@ impl App {
                         }).ok();
                     }
                     crate::ui::state::store::Screen::DataManage => {
-                        // Execute selected operation
                         let idx = self.state_store.read().await.get_state()
                             .ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                        let (title, msg) = match idx {
-                            0 => ("Import", "Import functionality is not yet implemented. Use the CLI or config file to import decks."),
-                            1 => ("Export", "Export functionality is not yet implemented. Data can be found in the database directory."),
-                            2 => ("Backup", "Backup created. Data is automatically persisted."),
-                            3 => ("Restore", "Restore functionality is not yet implemented. Use the database backup files directly."),
-                            4 => ("Clear Data", "Clear data is disabled for safety. Use CLI or delete the database manually."),
-                            _ => ("Unknown", "No operation selected."),
-                        };
-                        let state_store = self.state_store.read().await;
-                        state_store.show_message(crate::ui::state::store::SystemMessage::info(title, msg))?;
+                        match idx {
+                            0 => self.handle_data_import().await,
+                            1 => self.handle_data_export().await,
+                            2 => self.handle_data_backup().await,
+                            3 => self.handle_data_restore().await,
+                            4 => self.handle_data_clear().await,
+                            _ => Ok(()),
+                        }?;
                     }
                     _ => {}
                 }
@@ -505,7 +501,13 @@ impl App {
                 self.refresh_core_data().await?;
             }
             CommandType::ScrollStatsUp | CommandType::ScrollStatsDown => {
-                // Statistics screen scrolling (placeholder)
+                // Cycle through statistics tabs
+                let is_down = matches!(&command.command_type, CommandType::ScrollStatsDown);
+                self.state_store.read().await.update_state(|state| {
+                    let idx = state.ui_state.get("stats_tab").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                    let new_idx = if is_down { (idx + 1).min(2) } else { idx.saturating_sub(1) };
+                    state.ui_state.insert("stats_tab".to_string(), new_idx.to_string());
+                }).ok();
             }
             CommandType::Select => {
                 let current_screen = {
@@ -735,7 +737,13 @@ impl App {
                         }).ok();
                     }
                     crate::ui::state::store::Screen::Help => {
-                        // Help screen category navigation (placeholder)
+                        // Help screen category navigation
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("help_category").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 {
+                                state.ui_state.insert("help_category".to_string(), (idx - 1).to_string());
+                            }
+                        }).ok();
                     }
                     crate::ui::state::store::Screen::Settings => {
                         let state_store = self.state_store.read().await;
@@ -776,7 +784,13 @@ impl App {
                         }).ok();
                     }
                     crate::ui::state::store::Screen::Help => {
-                        // Help screen category navigation (placeholder)
+                        // Help screen category navigation
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("help_category").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 {
+                                state.ui_state.insert("help_category".to_string(), (idx - 1).to_string());
+                            }
+                        }).ok();
                     }
                     crate::ui::state::store::Screen::Settings => {
                         let state_store = self.state_store.read().await;
@@ -1242,6 +1256,228 @@ impl App {
             state_store.show_message(message)?;
         }
 
+        Ok(())
+    }
+
+    // Settings persistence
+
+    async fn persist_settings(&mut self) -> TuiResult<()> {
+        let Some(cm) = &mut self.config_manager else {
+            log::debug!("No config manager available, skipping settings persistence");
+            return Ok(());
+        };
+
+        let state = self.state_store.read().await.get_state();
+        let ui = &state.ui_state;
+
+        // Persist daily config
+        if let Some(new_cards) = ui.get("new_cards_per_day").and_then(|s| s.parse::<i32>().ok()) {
+            cm.config.daily.max_new_cards = new_cards;
+        }
+        if let Some(max_reviews) = ui.get("max_reviews_per_day").and_then(|s| s.parse::<i32>().ok()) {
+            cm.config.daily.max_review_cards = max_reviews;
+        }
+
+        // Persist UI config
+        if let Some(theme) = ui.get("theme") {
+            cm.config.ui.theme = theme.clone();
+        }
+        if let Some(show_progress) = ui.get("show_progress").and_then(|s| s.parse::<bool>().ok()) {
+            cm.config.ui.show_progress = show_progress;
+        }
+
+        // Save config to file
+        if let Err(e) = cm.save_config() {
+            log::warn!("Failed to save config: {}", e);
+        } else {
+            log::info!("Settings persisted to config file");
+        }
+        Ok(())
+    }
+
+    // Data management operations
+
+    async fn handle_data_import(&mut self) -> TuiResult<()> {
+        let data_dir = dirs::data_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join("ankitui");
+        let import_path = data_dir.join("import.toml");
+
+        if !import_path.exists() {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                "Import",
+                &format!("No import file found at {:?}", import_path),
+            ))?;
+            return Ok(());
+        }
+
+        let content = std::fs::read_to_string(&import_path).map_err(|e| TuiError::State {
+            message: format!("Failed to read import file: {}", e),
+        })?;
+
+        match self.deck_manager.import_deck(&content).await {
+            Ok(deck_uuid) => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Import Complete",
+                    &format!("Deck imported successfully (UUID: {})", deck_uuid),
+                ))?;
+                self.refresh_core_data().await?;
+            }
+            Err(e) => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                    "Import Failed",
+                    &format!("Failed to import deck: {}", e),
+                ))?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_data_export(&mut self) -> TuiResult<()> {
+        let deck_id = self.state_store.read().await.get_state().selected_deck_id;
+
+        let (deck_uuid, deck_name) = if let Some(id) = deck_id {
+            if let Ok((deck, _)) = self.deck_manager.get_deck(&id).await {
+                (id, deck.name)
+            } else {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                    "Export",
+                    "Selected deck not found",
+                ))?;
+                return Ok(());
+            }
+        } else {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                "Export",
+                "No deck selected. Select a deck first, then export.",
+            ))?;
+            return Ok(());
+        };
+
+        match self.deck_manager.export_deck(&deck_uuid, true).await {
+            Ok(export_data) => {
+                let data_dir = dirs::data_dir()
+                    .unwrap_or_else(|| std::env::current_dir().unwrap())
+                    .join("ankitui")
+                    .join("exports");
+                std::fs::create_dir_all(&data_dir).ok();
+                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                let export_path = data_dir.join(format!("{}_{}.toml", deck_name.replace('/', "::"), timestamp));
+
+                std::fs::write(&export_path, export_data).map_err(|e| TuiError::State {
+                    message: format!("Failed to write export file: {}", e),
+                })?;
+
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Export Complete",
+                    &format!("Deck exported to {:?}", export_path),
+                ))?;
+            }
+            Err(e) => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                    "Export Failed",
+                    &format!("Failed to export deck: {}", e),
+                ))?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_data_backup(&mut self) -> TuiResult<()> {
+        let data_dir = dirs::data_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join("ankitui");
+        let db_path = data_dir.join("ankitui.db");
+
+        if !db_path.exists() {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                "Backup",
+                "No database file found to backup",
+            ))?;
+            return Ok(());
+        }
+
+        let backup_dir = data_dir.join("backups");
+        std::fs::create_dir_all(&backup_dir).ok();
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let backup_path = backup_dir.join(format!("ankitui_{}.db", timestamp));
+
+        std::fs::copy(&db_path, &backup_path).map_err(|e| TuiError::State {
+            message: format!("Failed to create backup: {}", e),
+        })?;
+
+        let state_store = self.state_store.read().await;
+        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+            "Backup Complete",
+            &format!("Database backed up to {:?}", backup_path),
+        ))?;
+        Ok(())
+    }
+
+    async fn handle_data_restore(&mut self) -> TuiResult<()> {
+        let data_dir = dirs::data_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join("ankitui");
+        let db_path = data_dir.join("ankitui.db");
+        let backup_dir = data_dir.join("backups");
+
+        // Find the most recent backup
+        if let Ok(entries) = std::fs::read_dir(&backup_dir) {
+            let mut backups: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map_or(false, |ext| ext == "db"))
+                .filter_map(|e| {
+                    e.metadata().ok().and_then(|m| m.modified().ok().map(|t| (e, t)))
+                })
+                .collect();
+            backups.sort_by_key(|(_, t)| std::cmp::Reverse(*t));
+
+            if let Some((latest, _)) = backups.first() {
+                let backup_path = latest.path();
+                // Only restore if DB doesn't exist (safety check)
+                if !db_path.exists() {
+                    std::fs::copy(&backup_path, &db_path).map_err(|e| TuiError::State {
+                        message: format!("Failed to restore database: {}", e),
+                    })?;
+
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                        "Restore Complete",
+                        &format!("Database restored from {:?}", backup_path),
+                    ))?;
+                } else {
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                        "Restore Skipped",
+                        "Current database exists. Delete it first to restore from backup.",
+                    ))?;
+                }
+                return Ok(());
+            }
+        }
+
+        let state_store = self.state_store.read().await;
+        state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+            "Restore",
+            "No backup files found",
+        ))?;
+        Ok(())
+    }
+
+    async fn handle_data_clear(&mut self) -> TuiResult<()> {
+        let state_store = self.state_store.read().await;
+        state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+            "Clear Data",
+            "Clear data is disabled for safety. Use CLI or delete the database manually.",
+        ))?;
         Ok(())
     }
 }

@@ -644,10 +644,3 @@ impl<'a> AppController<'a> {
     }
 }
 
-// UI Rating enum for command handling
-pub enum UiRating {
-    Again,
-    Hard,
-    Good,
-    Easy,
-}

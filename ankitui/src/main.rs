@@ -118,14 +118,17 @@ async fn run_tui_mode() -> Result<()> {
         debug: false,
     };
 
-    // Create application
-    let mut app = App::new(app_config).await?;
+    // Create application with config manager for settings persistence
+    let mut app = App::with_config_manager(app_config, Some(config_manager)).await?;
 
     // Initial data update
     app.update().await?;
 
     // Run the main event loop
     ankitui_tui::run_event_loop_with_app(&mut app, None).await?;
+
+    // Shutdown (persists settings)
+    app.shutdown().await?;
 
     // Restore terminal
     disable_raw_mode()?;

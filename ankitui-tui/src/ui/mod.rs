@@ -10,6 +10,6 @@ pub mod theme;
 
 // Re-export key UI components
 pub use components::{Component, ComponentRegistry, ComponentState};
-pub use event::{Command, CommandType, EventHandler};
+pub use event::{Command, CommandType};
 pub use state::{AppState, Screen, StateStore};
 pub use theme::Theme;

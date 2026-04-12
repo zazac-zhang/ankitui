@@ -138,38 +138,6 @@ impl Default for EventLoop {
     }
 }
 
-/// Event processor trait for command execution
-pub trait EventProcessor: Send + Sync {
-    /// Process a command and return whether to continue the event loop
-    fn process_command(&mut self, command: Command) -> TuiResult<bool>;
-}
-
-/// Application event processor that connects commands to application logic
-pub struct ApplicationEventProcessor {
-    app_controller: crate::app::AppController<'static>,
-}
-
-impl ApplicationEventProcessor {
-    pub fn new(app_controller: crate::app::AppController<'static>) -> Self {
-        Self { app_controller }
-    }
-}
-
-impl EventProcessor for ApplicationEventProcessor {
-    fn process_command(&mut self, command: Command) -> TuiResult<bool> {
-        // Save command type before moving command
-        let command_type = command.command_type.clone();
-
-        // Handle the command using the app controller
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async { self.app_controller.handle_command(command).await })
-        })?;
-
-        // Continue event loop unless it's a quit command
-        Ok(!matches!(command_type, CommandType::Quit))
-    }
-}
-
 /// Convenience function to run the event loop with an application
 pub async fn run_event_loop_with_app(mut app: &mut crate::app::App, config: Option<EventLoopConfig>) -> TuiResult<()> {
     use crossterm::{

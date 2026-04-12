@@ -3,7 +3,7 @@
 > 基于代码深度分析，按优先级排序
 >
 > **最后更新**: 2026-04-12
-> **整体进度**: 核心功能全部完成，F9批量操作和CardEditor（终端不适合编辑）暂不实现
+> **整体进度**: 核心功能已完成，存在冗余代码需清理，部分功能需接入 UI
 
 ---
 
@@ -25,133 +25,171 @@
 
 ---
 
-## F1 - 核心功能可用性（P0 级，必须实现）
+## 当前完成清单
 
-> **目标**: 确保 TUI 界面的每个功能都可实际操作，而不是仅显示菜单
-
-### 1. 学习设置管理 (100% 完成) ✅
+### F1 - 清理冗余代码（P0，100% 完成）✅
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F1.1 | `StudyPrefsScreen` 交互逻辑 | `ankitui-tui/src/ui/components/screens/settings/mod.rs` | ✅ 已完成 |
-| F1.2 | 每日新卡片上限设置 | - | ✅ ↑↓导航, ←→调整数值 |
-| F1.3 | 每日复习卡片上限设置 | - | ✅ ↑↓导航, ←→调整数值 |
-| F1.4 | 自动前进设置 | - | ✅ Enter 切换布尔值 |
+| F1.1 | 删除 `domain/commands.rs`（CQRS 未接入） | `ankitui-tui/src/domain/commands.rs` | ✅ 已删除 |
+| F1.2 | 删除 `domain/queries.rs`（CQRS 未接入） | `ankitui-tui/src/domain/queries.rs` | ✅ 已删除 |
+| F1.3 | 删除 `EventHandler` 结构体（与 event_loop 重复） | `ankitui-tui/src/ui/event/handler.rs` | ✅ 已删除 |
+| F1.4 | 删除 `EventProcessor` trait + `ApplicationEventProcessor` | `ankitui-tui/src/app/event_loop.rs` | ✅ 已删除 |
+| F1.5 | 删除 `UiRating` 枚举（被 `CardRating` 替代） | `ankitui-tui/src/app/controller.rs` | ✅ 已删除 |
+| F1.6 | 删除 `App.event_handler` 字段 | `ankitui-tui/src/app/main_app.rs` | ✅ 已删除 |
+| F1.7 | 删除 `App::handle_input()` 方法（从未调用） | `ankitui-tui/src/app/main_app.rs` | ✅ 已删除 |
+| F1.8 | 更新 `domain/mod.rs` 和 `ui/mod.rs` 导出 | 多处 | ✅ 已修复 |
 
-### 2. 牌组编辑功能 (100% 完成) ✅
-
-| # | 问题 | 文件 | 状态 |
-|---|------|------|------|
-| F2.1 | `DeckEditScreen` 交互逻辑 | `ankitui-tui/src/ui/components/screens/deck/edit.rs` | ✅ 已完成 |
-| F2.2 | 重命名牌组 | - | ✅ 导航+状态显示 |
-| F2.3 | 编辑牌组描述 | - | ✅ 导航+状态显示 |
-| F2.4 | 编辑牌组调度配置 | - | ✅ ←→调整数值, Ctrl+S保存 |
-
-### 3. 数据管理交互 (100% 完成) ✅
+### F2 - 补全桩代码（P1，80% 完成）
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F3.1 | `DataManageScreen` 交互逻辑 | `ankitui-tui/src/ui/components/screens/settings/mod.rs` | ✅ 已完成 |
-| F3.2 | 导入数据到当前牌组 | - | ✅ 菜单导航+状态反馈 |
-| F3.3 | 导出数据到文件 | - | ✅ 菜单导航+状态反馈 |
-| F3.4 | 备份当前数据 | - | ✅ 菜单导航+状态反馈 |
+| F2.1 | Import 操作实现 | `ankitui-tui/src/app/main_app.rs` | ✅ 从 data_dir/ankitui/import.toml 导入 |
+| F2.2 | Export 操作实现 | `ankitui-tui/src/app/main_app.rs` | ✅ 导出到 data_dir/ankitui/exports/ |
+| F2.3 | Backup 操作实现 | `ankitui-tui/src/app/main_app.rs` | ✅ 时间戳数据库备份 |
+| F2.4 | Restore 操作实现 | `ankitui-tui/src/app/main_app.rs` | ✅ 从最新备份恢复 |
+| F2.5 | `ScrollStatsUp/Down` 命令 | `ankitui-tui/src/app/main_app.rs` | ✅ 切换统计页 tab |
+| F2.6 | Help 页 ↑↓ 导航 | `ankitui-tui/src/app/main_app.rs` | ✅ 切换帮助分类 |
 
-### 4. UI 设置交互 (100% 完成) ✅
+### F3 - 接入核心功能（P2，0% 完成）
+
+> 暂不实现，需要进一步规划
+
+### F4 - 设置持久化（P1，100% 完成）✅
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F4.1 | `UiSettingsScreen` 交互逻辑 | `ankitui-tui/src/ui/components/screens/settings/mod.rs` | ✅ 已完成 |
-| F4.2 | 显示名设置 | - | ✅ 导航+状态显示 |
-| F4.3 | 显示/隐藏进度条 | - | ✅ Enter 切换, ←→切换主题 |
+| F4.1 | StudyPrefs 持久化（新卡片/复习上限） | `ankitui-tui/src/app/main_app.rs` | ✅ shutdown 时写入配置 |
+| F4.2 | UiSettings 持久化（主题/进度条） | `ankitui-tui/src/app/main_app.rs` | ✅ shutdown 时写入配置 |
+| F4.3 | 退出时保存设置 | `ankitui-tui/src/app/main_app.rs` + `ankitui/src/main.rs` | ✅ App::with_config_manager + shutdown |
+
+### F5 - 代码质量（P3，0% 完成）
+
+> 暂不实现
 
 ---
 
-## F2 - 用户体验提升（P1 级，重要）
+## F1 - 清理冗余代码（P0 级，必须）
 
-### 1. 搜索功能 (100% 完成) ✅
+> **目标**: 消除死代码和重复逻辑，降低维护成本
 
-| # | 问题 | 文件 | 状态 |
-|---|------|------|------|
-| F5.1 | 搜索屏幕实现 | `ankitui-tui/src/ui/components/screens/search/mod.rs` | ✅ 已完成 |
-| F5.2 | 牌组搜索界面 | - | ✅ 导航+切换类型+输入 |
-| F5.3 | 卡片搜索界面 | - | ✅ Tab 切换搜索类型 |
-
-### 2. 统计可视化 (100% 完成) ✅
+### 1. 删除未使用的 CQRS 系统
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F6.1 | `ProgressScreen` 内容 | `ankitui-tui/src/ui/components/screens/stats/mod.rs` | ✅ 已完成 |
-| F6.2 | 学习进度图表 | - | ✅ Overview/Retention/Forecast 三个 tab |
-| F6.3 | 趋势分析展示 | - | ✅ 学习天数、留存率、预测 |
+| F1.1 | 删除 `domain/commands.rs` | `ankitui-tui/src/domain/commands.rs` | ❌ 定义了 Command/Query 特质和结构体，从未接入流程 |
+| F1.2 | 删除 `domain/queries.rs` | `ankitui-tui/src/domain/queries.rs` | ❌ 同上 |
+| F1.3 | 更新 `domain/mod.rs` 导出 | `ankitui-tui/src/domain/mod.rs` | ❌ 移除 commands/queries 模块引用 |
 
-### 3. 牌组管理增强 (100% 完成) ✅
+### 2. 删除未使用的事件处理器
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F7.1 | `DeckManageScreen` 操作连接 | `ankitui-tui/src/ui/components/screens/deck/manage.rs` | ✅ 已完成 |
-| F7.2 | 导出牌组功能 | - | ✅ 导航+状态反馈 |
-| F7.3 | 删除牌组确认流程 | - | ✅ 菜单导航+执行反馈 |
-| F7.4 | 牌组统计查看 | - | ✅ 导航+状态反馈 |
+| F1.4 | 删除 `EventProcessor` trait | `ankitui-tui/src/app/event_loop.rs:142` | ❌ 定义了但未实现 |
+| F1.5 | 删除 `ApplicationEventProcessor` | `ankitui-tui/src/app/event_loop.rs:148-171` | ❌ 定义了但未实例化 |
+| F1.6 | 删除 `UiRating` 枚举 | `ankitui-tui/src/app/controller.rs:648` | ❌ 被 `CardRating` 替代 |
+
+### 3. 合并重复的事件处理逻辑
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F1.7 | `event_loop.rs` 和 `handler.rs` 有几乎相同的上下文处理函数（~640 行 vs ~315 行） | `ankitui-tui/src/app/event_loop.rs` + `ankitui-tui/src/ui/event/handler.rs` | ❌ 两份代码做同一件事 |
+| F1.8 | `controller.rs` 和 `main_app.rs` 都处理 NavigateLeft/Right（StudyPrefs/UiSettings） | `ankitui-tui/src/app/controller.rs` + `ankitui-tui/src/app/main_app.rs` | ❌ 逻辑重复 |
+| F1.9 | `controller.rs` 的 select_previous/next_deck 与 `main_app.rs` 的 handle_deck_selection 重复 | `ankitui-tui/src/app/controller.rs:472-521` + `ankitui-tui/src/app/main_app.rs:1165-1208` | ❌ 逻辑重复 |
 
 ---
 
-## F3 - 高级功能（P2 级，部分完成）
+## F2 - 补全桩代码（P1 级，重要）
 
-### 1. 主题系统 (60% 完成)
+> **目标**: 让所有显示给用户的功能真正可用
 
-| # | 问题 | 文件 | 状态 |
-|---|------|------|------|
-| F8.1 | 主题定义 | `ankitui-tui/src/ui/theme.rs` | ✅ ColorScheme for 3 themes |
-| F8.2 | 亮色/暗色主题 | - | ✅ Default/Dark/Light color schemes |
-
-### 2. 批量操作 (10% 完成)
+### 1. 数据管理操作实现
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F9.1 | 多选卡片功能 | - | ❌ 未实现 |
-| F9.2 | 批量删除卡片 | - | ❌ 未实现 |
-| F9.3 | 批量导出牌组 | - | ❌ 未实现 |
+| F2.1 | Import 操作实现（目前显示占位提示） | `ankitui-tui/src/app/main_app.rs:463` | ❌ 应调用实际导入逻辑 |
+| F2.2 | Export 操作实现（目前显示占位提示） | `ankitui-tui/src/app/main_app.rs:464` | ❌ 应调用实际导出逻辑 |
+| F2.3 | Restore 操作实现（目前显示占位提示） | `ankitui-tui/src/app/main_app.rs:466` | ❌ 应调用实际恢复逻辑 |
 
-### 3. 帮助系统 (100% 完成) ✅
-
-| # | 问题 | 文件 | 状态 |
-|---|------|------|------|
-| F10.1 | F1 帮助绑定 | `ankitui-tui/src/ui/event/handler.rs` | ✅ 已有快捷键 |
-| F10.2 | 帮助内容显示 | `ankitui-tui/src/ui/components/screens/help/mod.rs` | ✅ 已完成 |
-| F10.3 | 帮助屏幕导航接入 | `ankitui-tui/src/ui/state/store.rs` + `render/mod.rs` | ✅ Screen::Help + render + Esc 返回 |
-
-### 4. Settings 子屏幕接入 (100% 完成) ✅
+### 2. 统计页面滚动导航
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F11.1 | ConfirmSetting 命令处理 | `ankitui-tui/src/app/controller.rs` | ✅ Enter 根据索引跳转 |
-| F11.2 | StudyPrefs 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_study_prefs |
-| F11.3 | UiSettings 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_ui_settings |
-| F11.4 | DataManage 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_data_manage |
-| F11.5 | ←→ 调整数值 | `ankitui-tui/src/app/controller.rs` | ✅ NavigateLeft/Right 处理 |
-| F11.6 | Esc 返回 Settings | `ankitui-tui/src/app/controller.rs` | ✅ NavigateBack 处理 |
+| F2.4 | `ScrollStatsUp/Down` 命令是空操作 | `ankitui-tui/src/app/main_app.rs:507-509` | ❌ 需实现统计页 tab 切换或内容滚动 |
 
-### 5. 搜索屏幕输入接入 (100% 完成) ✅
+### 3. 帮助屏幕分类导航
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F12.1 | 字符输入累积 | `ankitui-tui/src/app/main_app.rs` | ✅ SearchDecks/Backspace 处理 |
-| F12.2 | Tab 切换搜索类型 | `ankitui-tui/src/app/main_app.rs` | ✅ ToggleCardSide |
-| F12.3 | 搜索结果显示 | `ankitui-tui/src/ui/render/mod.rs` | ✅ 实时过滤牌组/卡片 |
-| F12.4 | Backspace 删除 | `ankitui-tui/src/app/main_app.rs` | ✅ SearchBackspace 命令 |
+| F2.5 | Help 页 ↑↓ 导航是空操作 | `ankitui-tui/src/app/main_app.rs:738,779` | ❌ 需实现帮助分类列表 |
 
-### 6. 数据管理操作反馈 (100% 完成) ✅
+---
+
+## F3 - 接入核心功能到 UI（P2 级）
+
+> **目标**: core 层已实现的功能应可通过 TUI 操作
+
+### 1. 卡片状态操作（Bury/Suspend）
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F13.1 | Enter 执行操作 | `ankitui-tui/src/app/main_app.rs` | ✅ Confirm 处理 DataManage |
-| F13.2 | 操作结果反馈 | `ankitui-tui/src/app/main_app.rs` | ✅ SystemMessage 提示 |
-| F13.3 | UiSettings Enter 切换 | `ankitui-tui/src/app/main_app.rs` | ✅ 布尔值切换 |
+| F3.1 | `CardStateManager.bury_card()` 无 TUI 命令 | `ankitui-core/src/core/card_state_manager.rs` | ❌ 核心已实现，无 UI |
+| F3.2 | `CardStateManager.suspend_card()` 无 TUI 命令 | `ankitui-core/src/core/card_state_manager.rs` | ❌ 核心已实现，无 UI |
+| F3.3 | 添加 Bury/Suspend 快捷键 | `ankitui-tui/src/ui/event/command.rs` + `handler.rs` | ❌ 需添加 CommandType |
 
-### 7. 卡片编辑器 (不实现)
+### 2. 标签管理
 
-> 终端环境不适合实现复杂的文本编辑功能（光标移动、插入/删除、多行输入等）
-> 替代方案：通过配置文件或 CLI 工具管理卡片
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F3.4 | `TagManager` 无 TUI 屏幕 | `ankitui-core/src/core/tag_manager.rs` | ❌ 核心完整（层级/搜索/过滤/批量） |
+| F3.5 | 添加标签管理菜单入口 | Settings 或 DeckManagement | ❌ 无导航入口 |
+| F3.6 | 标签搜索和过滤 UI | 新屏幕 | ❌ 需实现 |
+
+### 3. 媒体管理
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F3.7 | `MediaManager` 无 TUI 屏幕 | `ankitui-core/src/core/media_manager.rs` | ❌ 核心已实现 |
+| F3.8 | 媒体浏览和清理 UI | 新屏幕 | ❌ 需实现 |
+| F3.9 | 媒体时长提取 TODO | `ankitui-core/src/core/media_manager.rs:225` | ❌ 待实现 |
+
+### 4. 高级卡片类型渲染
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F3.10 | Cloze（完形填空）渲染 | `ankitui-tui/src/ui/components/screens/study/mod.rs` | ❌ TUI 只渲染 Basic 正反面 |
+| F3.11 | Input（输入型）渲染 | 同上 | ❌ 同上 |
+| F3.12 | MultipleChoice（选择题）渲染 | 同上 | ❌ 同上 |
+| F3.13 | ImageOcclusion（图片遮挡）渲染 | 同上 | ❌ 同上 |
+
+### 5. 增量学习队列
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F3.14 | `IncrementalLearning` 学习队列未接入 | `ankitui-core/src/core/incremental_learning.rs` | ❌ 核心已实现，学习会话用的是 `SessionController` |
+
+---
+
+## F4 - 设置持久化（P1 级）
+
+> **目标**: UI 中的设置修改应保存到配置文件
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F4.1 | StudyPrefs 修改未写回配置 | `ankitui-tui/src/app/main_app.rs:656-679` | ❌ 只修改内存状态 |
+| F4.2 | UiSettings 主题切换未持久化 | `ankitui-tui/src/app/main_app.rs:681-696` | ❌ 重启后丢失 |
+| F4.3 | 退出时保存设置 | `ankitui-tui/src/app/main_app.rs:256-287` | ❌ shutdown 未保存设置 |
+
+---
+
+## F5 - 代码质量（P3 级）
+
+### 1. 减少 `main_app.rs` 复杂度
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F5.1 | `execute_command` 超过 350 行 | `ankitui-tui/src/app/main_app.rs:420-794` | ❌ 需拆分为子处理器 |
+| F5.2 | 大量 `state_store.read().await.update_state().ok()` 链 | 多处 | ❌ 可提取辅助方法 |
 
 ---
 
@@ -161,15 +199,18 @@
 |---------|--------|--------|
 | **学习流程** | 100% | ✅ 已完成 |
 | **牌组管理** | 100% | ✅ 已完成 |
-| **统计分析** | 100% | ✅ 已完成 |
+| **统计分析** | 95% | ✅ 滚动导航已实现 |
 | **搜索过滤** | 100% | ✅ 已完成 |
-| **设置管理** | 100% | ✅ 已完成 |
-| **数据管理** | 100% | ✅ 已完成 |
-| **导航系统** | 100% | ✅ 已完成 |
+| **设置管理** | 95% | ✅ 持久化已实现 |
+| **数据管理** | 90% | ✅ Import/Export/Backup/Restore 已实现 |
+| **导航系统** | 95% | ✅ Help 页导航已实现 |
 | **帮助系统** | 100% | ✅ 已完成 |
-| **主题系统** | 60% | 已移出TODO |
-| **卡片编辑** | - | 不实现（终端限制） |
-| **批量操作** | 10% | F9 暂不实现 |
+| **主题系统** | 80% | ✅ 持久化已实现 |
+| **卡片状态操作** | 30% | ❌ 核心完成，无 UI |
+| **标签管理** | 10% | ❌ 核心完成，无 UI |
+| **媒体管理** | 10% | ❌ 核心完成，无 UI |
+| **高级卡片渲染** | 20% | ❌ 仅 Basic |
+| **代码质量** | 80% | ✅ 冗余已清理 |
 
 ---
 
@@ -177,6 +218,7 @@
 
 | 优先级 | 任务 | 预计工作量 |
 |--------|------|-----------|
-| **P0** | F1 (设置管理) + F2 (牌组编辑) + F3 (数据管理) + F4 (UI设置) | 4个功能 |
-| **P1** | F5 (搜索) + F6 (统计可视化) + F7 (牌组管理增强) | 3个功能 |
-| **P2** | F8 (主题) + F9 (批量操作) + F10 (帮助) | 3个功能 |
+| ~~**P0**~~ | ~~F1 清理冗余代码~~ | ~~中等~~ ✅ 已完成 |
+| ~~**P1**~~ | ~~F2 补全桩代码 + F4 设置持久化~~ | ~~中等~~ ✅ 已完成 |
+| **P2** | F3 接入核心功能（Bury/Suspend → 标签 → 媒体 → 高级卡片） | 大 |
+| **P3** | F5 代码质量优化（拆分 execute_command） | 小 |
