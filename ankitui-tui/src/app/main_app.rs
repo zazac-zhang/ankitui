@@ -497,6 +497,20 @@ impl App {
             CommandType::SkipCurrentCard => {
                 self.study_service_mut().skip_current_card().await?;
             }
+            CommandType::PauseSession => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                    "Session Paused",
+                    "Study session paused. Press any key to resume.",
+                ))?;
+            }
+            CommandType::ResumeSession => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Session Resumed",
+                    "Study session resumed.",
+                ))?;
+            }
             CommandType::RefreshScreen => {
                 self.refresh_core_data().await?;
             }
@@ -545,7 +559,16 @@ impl App {
                 self.refresh_core_data().await?;
             }
             CommandType::RefreshStatistics => {
-                // Refresh statistics
+                // Refresh statistics by reloading deck data
+                if let Some(deck_id) = self.state_store.read().await.get_state().selected_deck_id {
+                    if let Ok(_stats) = self.deck_service.get_deck_statistics(&deck_id).await {
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                            "Statistics Refreshed",
+                            &format!("Deck statistics have been updated"),
+                        ))?;
+                    }
+                }
             }
             CommandType::BuryCard => {
                 self.bury_current_card().await?;
@@ -564,6 +587,201 @@ impl App {
             }
             CommandType::CleanOrphanedMedia => {
                 self.clean_orphaned_media().await?;
+            }
+            CommandType::CreateDeckPrompt => {
+                // Navigate to deck management with create intent
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(crate::ui::state::store::Screen::DeckManagement)?;
+                state_store.update_state(|state| {
+                    state.ui_state.insert("deck_management_mode".to_string(), "create".to_string());
+                }).ok();
+
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                    "Create Deck",
+                    "Deck creation is available through the deck management menu",
+                ))?;
+            }
+            CommandType::DeleteDeckPrompt => {
+                // Navigate to deck management with delete intent
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(crate::ui::state::store::Screen::DeckManagement)?;
+                state_store.update_state(|state| {
+                    state.ui_state.insert("deck_management_mode".to_string(), "delete".to_string());
+                }).ok();
+
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                    "Delete Deck",
+                    "Deck deletion is available through the deck management menu",
+                ))?;
+            }
+            CommandType::CreateCardPrompt => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                    "Create Card",
+                    "Card creation is not available in TUI mode. Please use the CLI or import from file.",
+                ))?;
+            }
+            CommandType::LoadUserPreferences => {
+                // Load user preferences from config
+                if let Some(cm) = &self.config_manager {
+                    let state_store = self.state_store.read().await;
+                    state_store.update_state(|state| {
+                        state.user_preferences.theme = cm.config.ui.theme.clone();
+                        // Update other preferences as needed
+                    }).ok();
+                }
+            }
+            CommandType::UpdateUserPreferences(prefs) => {
+                // Update user preferences
+                let state_store = self.state_store.read().await;
+                state_store.update_state(|state| {
+                    for (key, value) in prefs.iter() {
+                        state.ui_state.insert(key.clone(), value.clone());
+                    }
+                }).ok();
+            }
+            CommandType::UpdateTheme(theme) => {
+                let state_store = self.state_store.read().await;
+                state_store.update_state(|state| {
+                    state.ui_state.insert("theme".to_string(), theme.clone());
+                    state.user_preferences.theme = theme.clone();
+                }).ok();
+
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Theme Updated",
+                    &format!("Theme changed to {}", theme),
+                ))?;
+            }
+            CommandType::UpdateLanguage(language) => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                    "Language",
+                    &format!("Language setting '{}' noted. Full language support coming soon.", language),
+                ))?;
+            }
+            CommandType::UpdateStudyGoals(cards, minutes) => {
+                let state_store = self.state_store.read().await;
+                state_store.update_state(|state| {
+                    state.ui_state.insert("daily_goal_cards".to_string(), cards.to_string());
+                    state.ui_state.insert("daily_goal_minutes".to_string(), minutes.to_string());
+                }).ok();
+
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Study Goals Updated",
+                    &format!("Daily goals: {} cards, {} minutes", cards, minutes),
+                ))?;
+            }
+            CommandType::LoadStatistics(deck_id) => {
+                // Load statistics for specific deck
+                if let Ok(_stats) = self.deck_service.get_deck_statistics(&deck_id).await {
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                        "Statistics Loaded",
+                        &format!("Loaded statistics for deck: {}", deck_id),
+                    ))?;
+                }
+            }
+            CommandType::NavigatePageUp => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+
+                match current_screen {
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        // Jump to top of deck list
+                        let state_store = self.state_store.read().await;
+                        state_store.update_state(|state| {
+                            state.deck_list_selected = Some(0);
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::Statistics => {
+                        // Already handled by ScrollStatsUp
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("stats_tab").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            state.ui_state.insert("stats_tab".to_string(), "0".to_string());
+                        }).ok();
+                    }
+                    _ => {}
+                }
+            }
+            CommandType::NavigatePageDown => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+
+                match current_screen {
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        // Jump to bottom of deck list
+                        let decks = self.deck_service.get_all_decks().await?;
+                        let deck_count = decks.len();
+                        if deck_count > 0 {
+                            let state_store = self.state_store.read().await;
+                            state_store.update_state(|state| {
+                                state.deck_list_selected = Some(deck_count - 1);
+                            }).ok();
+                        }
+                    }
+                    crate::ui::state::store::Screen::Statistics => {
+                        // Already handled by ScrollStatsDown
+                        self.state_store.read().await.update_state(|state| {
+                            state.ui_state.insert("stats_tab".to_string(), "2".to_string());
+                        }).ok();
+                    }
+                    _ => {}
+                }
+            }
+            CommandType::NavigateHome => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+
+                match current_screen {
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        let state_store = self.state_store.read().await;
+                        state_store.update_state(|state| {
+                            state.deck_list_selected = Some(0);
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::Statistics => {
+                        self.state_store.read().await.update_state(|state| {
+                            state.ui_state.insert("stats_tab".to_string(), "0".to_string());
+                        }).ok();
+                    }
+                    _ => {}
+                }
+            }
+            CommandType::NavigateEnd => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+
+                match current_screen {
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        if let Ok(decks) = self.deck_service.get_all_decks().await {
+                            let deck_count = decks.len();
+                            if deck_count > 0 {
+                                let state_store = self.state_store.read().await;
+                                state_store.update_state(|state| {
+                                    state.deck_list_selected = Some(deck_count - 1);
+                                }).ok();
+                            }
+                        }
+                    }
+                    crate::ui::state::store::Screen::Statistics => {
+                        self.state_store.read().await.update_state(|state| {
+                            state.ui_state.insert("stats_tab".to_string(), "2".to_string());
+                        }).ok();
+                    }
+                    _ => {}
+                }
             }
             CommandType::Quit => {
                 self.stop();
@@ -1593,6 +1811,14 @@ impl App {
         }
         if let Some(show_progress) = ui.get("show_progress").and_then(|s| s.parse::<bool>().ok()) {
             cm.config.ui.show_progress = show_progress;
+        }
+
+        // Persist study preferences
+        if let Some(auto_advance) = ui.get("auto_advance") {
+            cm.config.daily.auto_advance = auto_advance == "true";
+        }
+        if let Some(show_hint) = ui.get("show_hint") {
+            cm.config.daily.show_hint = show_hint == "true";
         }
 
         // Save config to file

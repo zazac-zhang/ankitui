@@ -320,7 +320,7 @@ fn render_deck_selection_with_real_data(
     f.render_widget(deck_list, chunks[1]);
 
     // Help footer
-    let help_text = "↑↓: Navigate | Enter: Study | Ctrl+N: New Deck | Ctrl+E: Edit | Delete: Delete | F5: Refresh | /: Search | Esc: Back";
+    let help_text = "↑↓: Navigate | Enter: Study | Ctrl+N: New Deck Menu | Delete: Delete Deck Menu | F5: Refresh | /: Search | Esc: Back";
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Cyan))
         .block(Block::default().borders(Borders::ALL));
@@ -1102,7 +1102,7 @@ fn render_ui_settings(
     let list = List::new(list_items).block(Block::default().borders(Borders::ALL).title("Settings"));
     f.render_widget(list, chunks[1]);
 
-    let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust theme | Ctrl+S: Save | Esc: Back")
+    let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Esc: Back (Settings auto-saved)")
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
     f.render_widget(help, chunks[2]);

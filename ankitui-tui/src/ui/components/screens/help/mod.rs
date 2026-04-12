@@ -32,6 +32,8 @@ const HELP_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
             ("Left / Right", "Navigate tabs / Adjust values"),
             ("Enter", "Confirm / Select / Execute"),
             ("Tab", "Switch search type"),
+            ("PageUp/PageDown", "Scroll up/down"),
+            ("Home/End", "Jump to top/bottom"),
         ],
     ),
     (
@@ -49,11 +51,23 @@ const HELP_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     (
+        "Deck Management",
+        &[
+            ("Enter", "Start studying selected deck"),
+            ("Ctrl+N", "Create new deck (via menu)"),
+            ("Delete", "Delete deck (via menu)"),
+            ("F5", "Refresh deck list"),
+            ("/", "Search decks"),
+            ("Esc", "Return to main menu"),
+        ],
+    ),
+    (
         "Settings",
         &[
-            ("Ctrl+S", "Save settings"),
+            ("Up / Down", "Navigate settings"),
             ("Enter", "Toggle boolean option"),
             ("Left / Right", "Adjust numeric values"),
+            ("Esc", "Return to main menu"),
         ],
     ),
 ];

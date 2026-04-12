@@ -22,6 +22,12 @@ pub struct DailyConfig {
     /// Show daily limit warnings
     pub show_limit_warnings: bool,
 
+    /// Auto-advance to next card
+    pub auto_advance: bool,
+
+    /// Show hint on question
+    pub show_hint: bool,
+
     /// Study reminder settings
     pub reminder: ReminderConfig,
 
@@ -1064,6 +1070,8 @@ impl Default for DailyConfig {
             day_start_hour: 0,
             day_end_hour: 23,
             show_limit_warnings: true,
+            auto_advance: false,
+            show_hint: true,
             reminder: ReminderConfig::default(),
             goals: StudyGoals::default(),
             schedule: DailySchedule::default(),
