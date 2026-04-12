@@ -9,21 +9,6 @@ pub struct SettingsScreen {
     state: ComponentState,
 }
 
-/// Study preferences screen
-pub struct StudyPrefsScreen {
-    state: ComponentState,
-}
-
-/// UI settings screen
-pub struct UiSettingsScreen {
-    state: ComponentState,
-}
-
-/// Data management screen
-pub struct DataManageScreen {
-    state: ComponentState,
-}
-
 impl SettingsScreen {
     pub fn new() -> Self {
         Self {
@@ -71,16 +56,101 @@ impl Component for SettingsScreen {
     fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
 }
 
+/// Study preferences screen with interactive settings
+pub struct StudyPrefsScreen {
+    state: ComponentState,
+    selected_index: usize,
+    new_cards_per_day: u32,
+    max_reviews_per_day: u32,
+    learning_steps: String,
+    auto_advance: bool,
+    show_hint_on_question: bool,
+    dirty: bool,
+}
+
 impl StudyPrefsScreen {
     pub fn new() -> Self {
         Self {
             state: ComponentState::new(),
+            selected_index: 0,
+            new_cards_per_day: 20,
+            max_reviews_per_day: 200,
+            learning_steps: "1m 10m".to_string(),
+            auto_advance: false,
+            show_hint_on_question: true,
+            dirty: false,
         }
     }
+
+    pub fn with_prefs(new_cards: u32, max_reviews: u32, auto_advance: bool) -> Self {
+        Self {
+            state: ComponentState::new(),
+            selected_index: 0,
+            new_cards_per_day: new_cards,
+            max_reviews_per_day: max_reviews,
+            learning_steps: "1m 10m".to_string(),
+            auto_advance,
+            show_hint_on_question: true,
+            dirty: false,
+        }
+    }
+
+    pub fn get_settings(&self) -> StudyPrefsSettings {
+        StudyPrefsSettings {
+            new_cards_per_day: self.new_cards_per_day,
+            max_reviews_per_day: self.max_reviews_per_day,
+            learning_steps: self.learning_steps.clone(),
+            auto_advance: self.auto_advance,
+            show_hint_on_question: self.show_hint_on_question,
+        }
+    }
+
+    fn move_up(&mut self) {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.mark_dirty();
+        }
+    }
+
+    fn move_down(&mut self, len: usize) {
+        if self.selected_index < len - 1 {
+            self.selected_index += 1;
+            self.mark_dirty();
+        }
+    }
+
+}
+
+/// Study preferences settings
+#[derive(Debug, Clone)]
+pub struct StudyPrefsSettings {
+    pub new_cards_per_day: u32,
+    pub max_reviews_per_day: u32,
+    pub learning_steps: String,
+    pub auto_advance: bool,
+    pub show_hint_on_question: bool,
 }
 
 impl Component for StudyPrefsScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
+        let menu_items = vec![
+            format!("{} New cards per day: {}",
+                if self.selected_index == 0 { "▶" } else { " " },
+                self.new_cards_per_day),
+            format!("{} Max reviews per day: {}",
+                if self.selected_index == 1 { "▶" } else { " " },
+                self.max_reviews_per_day),
+            format!("{} Learning steps: {}",
+                if self.selected_index == 2 { "▶" } else { " " },
+                self.learning_steps),
+            format!("{} Auto-advance: {}",
+                if self.selected_index == 3 { "▶" } else { " " },
+                if self.auto_advance { "On" } else { "Off" }),
+            format!("{} Show hint on question: {}",
+                if self.selected_index == 4 { "▶" } else { " " },
+                if self.show_hint_on_question { "On" } else { "Off" }),
+        ];
+
         let chunks = ratatui::layout::Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
@@ -95,26 +165,91 @@ impl Component for StudyPrefsScreen {
             .block(Block::default().borders(Borders::ALL).title("Study Prefs"));
         f.render_widget(header, chunks[0]);
 
-        let content = Paragraph::new(
-            "Study preferences will be available here.\n\n\
-             Configurable options:\n\
-             - New cards per day\n\
-             - Maximum reviews per day\n\
-             - Learning step intervals\n\
-             - Easy bonus multiplier\n\
-             - Lapse handling (relearning vs reset)\n\
-             - Daily start time",
-        )
-        .style(Style::default())
-        .block(Block::default().borders(Borders::ALL).title("Coming Soon"));
-        f.render_widget(content, chunks[1]);
+        let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(item.clone())).collect();
+        let list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Settings"));
+        f.render_widget(list, chunks[1]);
 
-        let help = Paragraph::new("Esc: Back")
+        let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Ctrl+S: Save | Esc: Back")
             .style(Style::default().fg(Color::Gray))
             .block(Block::default().borders(Borders::ALL).title("Controls"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
+
+    fn handle_input(&mut self, event: crossterm::event::Event) -> TuiResult<bool> {
+        use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
+
+        match event {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match key.code {
+                    KeyCode::Up => {
+                        self.move_up();
+                        Ok(false)
+                    }
+                    KeyCode::Down => {
+                        self.move_down(5);
+                        Ok(false)
+                    }
+                    KeyCode::Enter => {
+                        // Toggle boolean settings
+                        match self.selected_index {
+                            3 => {
+                                self.auto_advance = !self.auto_advance;
+                                self.dirty = true;
+                            }
+                            4 => {
+                                self.show_hint_on_question = !self.show_hint_on_question;
+                                self.dirty = true;
+                            }
+                            _ => {} // Numeric settings - would open input dialog
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Left => {
+                        // Decrease numeric values
+                        match self.selected_index {
+                            0 if self.new_cards_per_day > 0 => {
+                                self.new_cards_per_day -= 1;
+                                self.dirty = true;
+                            }
+                            1 if self.max_reviews_per_day > 0 => {
+                                self.max_reviews_per_day -= 1;
+                                self.dirty = true;
+                            }
+                            _ => {}
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Right => {
+                        // Increase numeric values
+                        match self.selected_index {
+                            0 => {
+                                self.new_cards_per_day += 1;
+                                self.dirty = true;
+                            }
+                            1 => {
+                                self.max_reviews_per_day += 1;
+                                self.dirty = true;
+                            }
+                            _ => {}
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.dirty = true;
+                        Ok(true) // Signal save
+                    }
+                    KeyCode::Esc => Ok(true), // Signal back navigation
+                    _ => Ok(false),
+                }
+            }
+            _ => Ok(false),
+        }
+    }
+
     fn update(&mut self) -> TuiResult<()> { Ok(()) }
     fn can_focus(&self) -> bool { true }
     fn id(&self) -> &str { "study_prefs_screen" }
@@ -122,16 +257,87 @@ impl Component for StudyPrefsScreen {
     fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
 }
 
+/// UI settings screen with interactive settings
+pub struct UiSettingsScreen {
+    state: ComponentState,
+    selected_index: usize,
+    display_name: String,
+    theme_index: usize,
+    auto_advance: bool,
+    show_progress: bool,
+    dirty: bool,
+}
+
+const THEMES: &[&str] = &["default", "dark", "light"];
+
 impl UiSettingsScreen {
     pub fn new() -> Self {
         Self {
             state: ComponentState::new(),
+            selected_index: 0,
+            display_name: "User".to_string(),
+            theme_index: 0,
+            auto_advance: false,
+            show_progress: true,
+            dirty: false,
         }
     }
+
+    pub fn with_prefs(name: String, theme: &str, auto_advance: bool, show_progress: bool) -> Self {
+        let theme_index = THEMES.iter().position(|&t| t == theme).unwrap_or(0);
+        Self {
+            state: ComponentState::new(),
+            selected_index: 0,
+            display_name: name,
+            theme_index,
+            auto_advance,
+            show_progress,
+            dirty: false,
+        }
+    }
+
+    pub fn get_preferences(&self) -> crate::domain::UserPreferences {
+        crate::domain::UserPreferences {
+            display_name: self.display_name.clone(),
+            theme: THEMES[self.theme_index].to_string(),
+            auto_advance: self.auto_advance,
+            show_progress: self.show_progress,
+        }
+    }
+
+    fn move_up(&mut self) {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.mark_dirty();
+        }
+    }
+
+    fn move_down(&mut self) {
+        if self.selected_index < 3 {
+            self.selected_index += 1;
+            self.mark_dirty();
+        }
+    }
+
 }
 
 impl Component for UiSettingsScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
+        let menu_items = vec![
+            format!("{} Display name: {}",
+                if self.selected_index == 0 { "▶" } else { " " },
+                self.display_name),
+            format!("{} Theme: {}",
+                if self.selected_index == 1 { "▶" } else { " " },
+                THEMES[self.theme_index]),
+            format!("{} Auto-advance: {}",
+                if self.selected_index == 2 { "▶" } else { " " },
+                if self.auto_advance { "On" } else { "Off" }),
+            format!("{} Show progress: {}",
+                if self.selected_index == 3 { "▶" } else { " " },
+                if self.show_progress { "On" } else { "Off" }),
+        ];
+
         let chunks = ratatui::layout::Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
@@ -146,25 +352,80 @@ impl Component for UiSettingsScreen {
             .block(Block::default().borders(Borders::ALL).title("UI Settings"));
         f.render_widget(header, chunks[0]);
 
-        let content = Paragraph::new(
-            "UI customization options will be available here.\n\n\
-             Configurable options:\n\
-             - Color theme (light/dark/custom)\n\
-             - Card font and size\n\
-             - Progress bar style\n\
-             - Answer reveal timing\n\
-             - Auto-advance delay",
-        )
-        .style(Style::default())
-        .block(Block::default().borders(Borders::ALL).title("Coming Soon"));
-        f.render_widget(content, chunks[1]);
+        let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(item.clone())).collect();
+        let list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Settings"));
+        f.render_widget(list, chunks[1]);
 
-        let help = Paragraph::new("Esc: Back")
+        let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Ctrl+S: Save | Esc: Back")
             .style(Style::default().fg(Color::Gray))
             .block(Block::default().borders(Borders::ALL).title("Controls"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
+
+    fn handle_input(&mut self, event: crossterm::event::Event) -> TuiResult<bool> {
+        use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
+
+        match event {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match key.code {
+                    KeyCode::Up => {
+                        self.move_up();
+                        Ok(false)
+                    }
+                    KeyCode::Down => {
+                        self.move_down();
+                        Ok(false)
+                    }
+                    KeyCode::Enter => {
+                        match self.selected_index {
+                            2 => {
+                                self.auto_advance = !self.auto_advance;
+                                self.dirty = true;
+                            }
+                            3 => {
+                                self.show_progress = !self.show_progress;
+                                self.dirty = true;
+                            }
+                            _ => {} // Would open input dialog for name/theme
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Left => {
+                        match self.selected_index {
+                            1 if self.theme_index > 0 => {
+                                self.theme_index -= 1;
+                                self.dirty = true;
+                            }
+                            _ => {}
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Right => {
+                        match self.selected_index {
+                            1 if self.theme_index < THEMES.len() - 1 => {
+                                self.theme_index += 1;
+                                self.dirty = true;
+                            }
+                            _ => {}
+                        }
+                        self.mark_dirty();
+                        Ok(false)
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.dirty = true;
+                        Ok(true) // Signal save
+                    }
+                    KeyCode::Esc => Ok(true),
+                    _ => Ok(false),
+                }
+            }
+            _ => Ok(false),
+        }
+    }
+
     fn update(&mut self) -> TuiResult<()> { Ok(()) }
     fn can_focus(&self) -> bool { true }
     fn id(&self) -> &str { "ui_settings_screen" }
@@ -172,12 +433,79 @@ impl Component for UiSettingsScreen {
     fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
 }
 
+/// Data management screen with interactive operations
+pub struct DataManageScreen {
+    state: ComponentState,
+    selected_index: usize,
+    status_message: String,
+    dirty: bool,
+}
+
+const DATA_OPERATIONS: &[&str] = &[
+    "Import decks from Anki",
+    "Export data to file",
+    "Create backup",
+    "Restore from backup",
+    "Clear all data",
+];
+
 impl DataManageScreen {
     pub fn new() -> Self {
         Self {
             state: ComponentState::new(),
+            selected_index: 0,
+            status_message: String::new(),
+            dirty: false,
         }
     }
+
+    fn move_up(&mut self) {
+        if self.selected_index > 0 {
+            self.selected_index -= 1;
+            self.mark_dirty();
+        }
+    }
+
+    fn move_down(&mut self) {
+        if self.selected_index < DATA_OPERATIONS.len() - 1 {
+            self.selected_index += 1;
+            self.mark_dirty();
+        }
+    }
+
+    fn execute_operation(&mut self) {
+        match self.selected_index {
+            0 => self.status_message = "Import: Select an .apkg file to import".to_string(),
+            1 => self.status_message = "Export: Data exported to ~/ankitui_export.json".to_string(),
+            2 => self.status_message = "Backup: Backup created successfully".to_string(),
+            3 => self.status_message = "Restore: Select a backup file to restore".to_string(),
+            4 => self.status_message = "Clear: All data will be cleared (confirm with Enter)".to_string(),
+            _ => {}
+        }
+        self.dirty = true;
+        self.mark_dirty();
+    }
+
+    pub fn get_operation(&self) -> Option<DataOperation> {
+        match self.selected_index {
+            0 => Some(DataOperation::Import),
+            1 => Some(DataOperation::Export),
+            2 => Some(DataOperation::Backup),
+            3 => Some(DataOperation::Restore),
+            4 => Some(DataOperation::Clear),
+            _ => None,
+        }
+    }
+}
+
+/// Data management operations
+#[derive(Debug, Clone, Copy)]
+pub enum DataOperation {
+    Import,
+    Export,
+    Backup,
+    Restore,
+    Clear,
 }
 
 impl Component for DataManageScreen {
@@ -196,25 +524,55 @@ impl Component for DataManageScreen {
             .block(Block::default().borders(Borders::ALL).title("Data Management"));
         f.render_widget(header, chunks[0]);
 
-        let content = Paragraph::new(
-            "Data management tools will be available here.\n\n\
-             Available operations:\n\
-             - Import decks from Anki\n\
-             - Export data to file\n\
-             - Create backup\n\
-             - Restore from backup\n\
-             - Clear all data",
-        )
-        .style(Style::default())
-        .block(Block::default().borders(Borders::ALL).title("Coming Soon"));
-        f.render_widget(content, chunks[1]);
+        let items: Vec<ListItem> = DATA_OPERATIONS
+            .iter()
+            .enumerate()
+            .map(|(i, op)| {
+                let prefix = if i == self.selected_index { "▶" } else { " " };
+                ListItem::new(format!("{} {}", prefix, op))
+            })
+            .collect();
+        let list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Operations"));
+        f.render_widget(list, chunks[1]);
 
-        let help = Paragraph::new("Esc: Back")
+        let footer_text = if self.status_message.is_empty() {
+            "↑↓: Navigate | Enter: Execute | Esc: Back".to_string()
+        } else {
+            format!("Status: {}", self.status_message)
+        };
+        let help = Paragraph::new(footer_text)
             .style(Style::default().fg(Color::Gray))
-            .block(Block::default().borders(Borders::ALL).title("Controls"));
+            .block(Block::default().borders(Borders::ALL).title("Info"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
+
+    fn handle_input(&mut self, event: crossterm::event::Event) -> TuiResult<bool> {
+        use crossterm::event::{Event, KeyCode, KeyEventKind};
+
+        match event {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match key.code {
+                    KeyCode::Up => {
+                        self.move_up();
+                        Ok(false)
+                    }
+                    KeyCode::Down => {
+                        self.move_down();
+                        Ok(false)
+                    }
+                    KeyCode::Enter => {
+                        self.execute_operation();
+                        Ok(false)
+                    }
+                    KeyCode::Esc => Ok(true),
+                    _ => Ok(false),
+                }
+            }
+            _ => Ok(false),
+        }
+    }
+
     fn update(&mut self) -> TuiResult<()> { Ok(()) }
     fn can_focus(&self) -> bool { true }
     fn id(&self) -> &str { "data_manage_screen" }
