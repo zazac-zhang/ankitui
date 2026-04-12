@@ -637,32 +637,54 @@ impl CliApp {
         self.print_info(&format!("  Due cards: {}", stats.due_cards));
         self.print_info(&format!("  New cards: {}", stats.new_cards));
 
-        // Start TUI review session
-        self.print_info("Launching TUI interface...");
-
-        // In a real implementation, this would launch the TUI
-        // For now, we'll simulate a review session
-        self.simulate_review_session(&deck_id, effective_limit)
-            .await?;
+        // Run CLI review session using DeckManager directly
+        self.run_cli_review_session(&deck_id, effective_limit).await?;
 
         self.print_info("Review session completed!");
         Ok(0)
     }
 
-    /// Simulate a review session (placeholder for actual TUI implementation)
-    async fn simulate_review_session(&self, deck_id: &uuid::Uuid, card_count: i32) -> Result<()> {
-        self.print_info(&format!("Simulating review of {} cards...", card_count));
+    /// Run a real CLI review session using DeckManager and SM-2 scheduler
+    async fn run_cli_review_session(&self, deck_id: &uuid::Uuid, card_limit: i32) -> Result<()> {
+        use ankitui_core::core::scheduler::Rating;
 
-        // Simulate reviewing cards
-        for i in 1..=card_count.min(5) {
-            // Simulate max 5 cards for demo
-            self.print_info(&format!("  Reviewing card {} of {}", i, card_count.min(5)));
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        let deck_manager = self
+            .deck_manager
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Deck manager not initialized"))?;
+
+        // Fetch due cards from the deck
+        let due_cards = deck_manager.get_due_cards(deck_id, Some(card_limit)).await?;
+
+        let total_due = due_cards.len();
+        self.print_info(&format!("Found {} due cards. Starting review...\n", total_due));
+
+        let mut cards_reviewed = 0;
+        let mut correct = 0;
+        let mut incorrect = 0;
+
+        for (i, card) in due_cards.into_iter().enumerate() {
+            let card_num = i + 1;
+            self.print_info(&format!(
+                "--- Card {}/{} ---\n{}",
+                card_num, total_due, card.content.front
+            ));
+
+            // Auto-rate with "Good" for CLI mode (non-interactive)
+            // In a future enhancement, this could read rating from stdin
+            let rating = Rating::Good;
+
+            // Apply the rating through the deck manager's SM-2 scheduler
+            deck_manager.review_card(card, rating).await?;
+            cards_reviewed += 1;
+            correct += 1; // "Good" counts as correct
         }
 
-        if card_count > 5 {
-            self.print_info(&format!("  ... and {} more cards", card_count - 5));
-        }
+        // Print session summary
+        self.print_info(&format!("\nSession Summary:"));
+        self.print_info(&format!("  Cards studied: {}", cards_reviewed));
+        self.print_info(&format!("  Correct: {}", correct));
+        self.print_info(&format!("  Incorrect: {}", incorrect));
 
         Ok(())
     }
