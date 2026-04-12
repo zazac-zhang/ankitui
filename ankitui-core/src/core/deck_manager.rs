@@ -643,6 +643,11 @@ impl DeckManager {
             },
         })
     }
+
+    /// Get the content base directory
+    pub fn get_content_base_dir(&self) -> &std::path::Path {
+        self.sync_adapter.get_content_base_dir()
+    }
 }
 
 /// Updates that can be applied to a deck

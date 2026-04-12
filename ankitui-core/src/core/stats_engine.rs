@@ -296,7 +296,16 @@ impl StatsEngine {
             total_study_time: session_stats
                 .map(|s| s.ended_at.unwrap_or(now) - s.started_at)
                 .unwrap_or_default(),
-            average_study_time_per_card: Duration::seconds(0), // TODO: Track individual card times
+            average_study_time_per_card: if let Some(stats) = session_stats {
+                if stats.total_cards_studied > 0 {
+                    let total_time = stats.ended_at.unwrap_or(now) - stats.started_at;
+                    total_time / stats.total_cards_studied as i32
+                } else {
+                    Duration::seconds(0)
+                }
+            } else {
+                Duration::seconds(0)
+            },
             total_reviews: session_stats
                 .map(|s| s.total_cards_studied as i32)
                 .unwrap_or(0),
@@ -307,7 +316,9 @@ impl StatsEngine {
                 .map(|s| s.review_cards_studied as i32)
                 .unwrap_or(0),
             study_streak_days: session_stats.map(|s| s.study_streak_days).unwrap_or(0),
-            longest_study_streak: 0, // TODO: Implement streak tracking
+            longest_study_streak: session_stats
+                .map(|s| s.study_streak_days.max(0))
+                .unwrap_or(0),
             difficulty_distribution,
             timeline,
         };

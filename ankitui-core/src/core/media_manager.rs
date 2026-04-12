@@ -3,11 +3,19 @@
 //! Handles media file operations, validation, and metadata extraction
 
 use crate::data::models::{EnhancedMediaRef, MediaMetadata, MediaRef, MediaStatus, MediaType};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
+use serde::{Deserialize, Serialize};
+
+/// Media dimensions for images and video
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MediaDimensions {
+    pub width: u32,
+    pub height: u32,
+}
 
 /// Media manager for handling card media files
 pub struct MediaManager {
@@ -104,21 +112,39 @@ impl MediaManager {
     ) -> Result<EnhancedMediaRef> {
         self.ensure_media_dir()?;
 
-        // TODO: Implement URL download functionality
-        // For now, create a reference without local caching
+        // Generate unique filename
         let filename = format!(
             "{}.{}",
             Uuid::new_v4(),
             self.get_extension_for_type(&media_type)
         );
 
+        let local_path = self.media_dir.join(&filename);
+
+        // Download the file
+        let response = reqwest::get(url).await
+            .context("Failed to fetch URL")?;
+
+        if !response.status().is_success() {
+            return Err(anyhow!("HTTP error: {}", response.status()));
+        }
+
+        let bytes = response.bytes().await
+            .context("Failed to read response body")?;
+
+        // Write to local file
+        tokio::fs::write(&local_path, bytes).await
+            .context("Failed to write media file")?;
+
+        log::info!("Downloaded media from {} to {:?}", url, local_path);
+
         Ok(EnhancedMediaRef {
             id: Uuid::new_v4(),
             path: filename,
             media_type,
             metadata: MediaMetadata::default(),
-            status: MediaStatus::Processing,
-            local_cache_path: None,
+            status: MediaStatus::Available,
+            local_cache_path: Some(local_path.to_string_lossy().to_string()),
             remote_url: Some(url.to_string()),
             alt_text: None,
             created_at: Utc::now(),
@@ -208,17 +234,27 @@ impl MediaManager {
     ) -> Result<MediaMetadata> {
         let mime_type = self.guess_mime_type(path)?;
 
-        // Basic metadata - in a real implementation, you'd use libraries like:
-        // - `image` crate for image dimensions
-        // - `symphonia` or `rodio` for audio duration
-        // - `gstreamer` or `ffmpeg-next` for video processing
+        // Extract dimensions for images
+        let dimensions = if mime_type.starts_with("image/") {
+            self.extract_image_dimensions(path).await.ok()
+        } else {
+            None
+        };
+
+        // Extract duration for audio/video
+        // Note: This would require additional libraries like symphonia or gstreamer
+        let duration_seconds = if mime_type.starts_with("audio/") || mime_type.starts_with("video/") {
+            None // TODO: Implement audio/video duration extraction
+        } else {
+            None
+        };
 
         let metadata = MediaMetadata {
             filename: Some(filename.to_string()),
             file_size,
             mime_type: Some(mime_type),
-            duration_seconds: None, // TODO: Extract for audio/video
-            dimensions: None,       // TODO: Extract for images/video
+            duration_seconds,
+            dimensions: dimensions.map(|d| (d.width, d.height)),
             checksum: Some(self.calculate_checksum(path)?),
             duration: None,
             created_at: Some(Utc::now()),
@@ -226,6 +262,23 @@ impl MediaManager {
         };
 
         Ok(metadata)
+    }
+
+    /// Extract image dimensions using the image crate
+    async fn extract_image_dimensions(&self, path: &Path) -> Result<MediaDimensions> {
+        // Use tokio::task::spawn_blocking to run blocking I/O off the async runtime
+        let path_clone = path.to_path_buf();
+        let dimensions = tokio::task::spawn_blocking(move || {
+            let img = image::open(&path_clone)?;
+            Ok::<_, anyhow::Error>((img.width(), img.height()))
+        }).await
+        .context("Failed to join blocking task")?
+        .context("Failed to open image")?;
+
+        Ok(MediaDimensions {
+            width: dimensions.0,
+            height: dimensions.1,
+        })
     }
 
     /// Guess MIME type from file extension

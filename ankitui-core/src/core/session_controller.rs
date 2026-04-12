@@ -12,11 +12,12 @@ use crate::core::scheduler::{Rating, Scheduler};
 use crate::data::models::{BuryReason, BuriedCardRecord, Card, CardState, Deck, SuspendedCardRecord};
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc, Duration};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use uuid::Uuid;
 
 /// Session states
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionState {
     NotStarted,
     InProgress,
@@ -25,7 +26,7 @@ pub enum SessionState {
 }
 
 /// Session statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionStats {
     pub started_at: DateTime<Utc>,
     pub ended_at: Option<DateTime<Utc>>,
@@ -40,7 +41,7 @@ pub struct SessionStats {
 }
 
 /// Daily limits configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DailyLimits {
     pub max_new_cards: i32,
     pub max_review_cards: i32,
@@ -745,9 +746,22 @@ impl SessionController {
 
     /// Save current session state for recovery
     pub async fn save_session_state(&self) -> Result<()> {
+        if self.session_state == SessionState::NotStarted || self.session_state == SessionState::Finished {
+            return Ok(());
+        }
+
         if let Some(deck_id) = self.current_deck_id {
-            // Create session recovery data
-            let _recovery_data = SessionRecoveryData {
+            // Get the content base directory from deck manager
+            let base_dir = self.deck_manager.get_content_base_dir();
+            let recovery_dir = base_dir.join(".recovery");
+
+            // Ensure recovery directory exists
+            tokio::fs::create_dir_all(&recovery_dir).await
+                .context("Failed to create recovery directory")?;
+
+            let recovery_file = recovery_dir.join(format!("session_{}.json", deck_id));
+
+            let recovery_data = SessionRecoveryData {
                 deck_id,
                 session_state: self.session_state.clone(),
                 session_stats: self.session_stats.clone(),
@@ -756,26 +770,77 @@ impl SessionController {
                 timestamp: Utc::now(),
             };
 
-            // This would save to a recovery file or database
-            // For now, we'll just return success
-            // TODO: Implement actual persistence of recovery data
+            let json_data = serde_json::to_string_pretty(&recovery_data)
+                .context("Failed to serialize recovery data")?;
+
+            tokio::fs::write(&recovery_file, json_data).await
+                .context("Failed to write recovery file")?;
+
+            log::info!("Session state saved to {:?}", recovery_file);
         }
 
         Ok(())
     }
 
     /// Recover a previously interrupted session
-    pub async fn recover_session(&mut self, _deck_id: Uuid) -> Result<bool> {
-        // TODO: Load session recovery data from storage
-        // For now, we'll return false indicating no session to recover
+    pub async fn recover_session(&mut self, deck_id: Uuid) -> Result<bool> {
+        // Get the content base directory from deck manager
+        let base_dir = self.deck_manager.get_content_base_dir();
+        let recovery_dir = base_dir.join(".recovery");
+        let recovery_file = recovery_dir.join(format!("session_{}.json", deck_id));
 
-        // When implemented, this would:
-        // 1. Load recovery data from storage
-        // 2. Restore session state, stats, and limits
-        // 3. Rebuild card queues
-        // 4. Position to the correct card
+        // Check if recovery file exists
+        if !recovery_file.exists() {
+            return Ok(false);
+        }
 
-        Ok(false)
+        // Load recovery data
+        let json_data = tokio::fs::read_to_string(&recovery_file).await
+            .context("Failed to read recovery file")?;
+
+        let recovery_data: SessionRecoveryData = serde_json::from_str(&json_data)
+            .context("Failed to deserialize recovery data")?;
+
+        // Validate recovery data is for the correct deck
+        if recovery_data.deck_id != deck_id {
+            return Err(anyhow!("Recovery data deck mismatch"));
+        }
+
+        // Check if recovery data is too old (older than 24 hours)
+        let age = Utc::now() - recovery_data.timestamp;
+        if age.num_hours() > 24 {
+            log::info!("Recovery data is too old ({} hours), ignoring", age.num_hours());
+            tokio::fs::remove_file(&recovery_file).await.ok(); // Clean up old recovery file
+            return Ok(false);
+        }
+
+        // Restore session state
+        self.current_deck_id = Some(deck_id);
+        self.session_state = recovery_data.session_state;
+        self.session_stats = recovery_data.session_stats;
+        self.daily_limits = recovery_data.daily_limits;
+
+        // Rebuild card queues
+        self.load_cards_for_session(deck_id).await?;
+
+        // Position to the current card if available
+        if let Some(card_id) = recovery_data.current_card_id {
+            // Try to find the card in the queues
+            self.current_card = self.find_card_in_queues(&card_id);
+        }
+
+        log::info!("Session recovered from {:?}", recovery_file);
+        Ok(true)
+    }
+
+    /// Find a card in the queues by ID
+    fn find_card_in_queues(&self, card_id: &Uuid) -> Option<Card> {
+        self.card_queues.new_cards.iter()
+            .chain(self.card_queues.learning_cards.iter())
+            .chain(self.card_queues.review_cards.iter())
+            .chain(self.card_queues.relearning_cards.iter())
+            .find(|card| &card.content.id == card_id)
+            .cloned()
     }
 }
 
@@ -794,7 +859,7 @@ pub struct SessionProgress {
 }
 
 /// Session recovery data for persistence
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionRecoveryData {
     deck_id: Uuid,
     session_state: SessionState,
