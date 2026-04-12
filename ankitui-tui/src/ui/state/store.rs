@@ -45,6 +45,9 @@ pub enum Screen {
     DeckManagement,
     Search,
     Help,
+    StudyPrefs,
+    UiSettings,
+    DataManage,
 }
 
 /// System message for user notifications

@@ -225,7 +225,40 @@ impl<'a> AppController<'a> {
                 self.navigate_to_screen(Screen::Help).await?;
             }
 
-            CommandType::SearchDecks(_) | CommandType::SearchCards(_) | CommandType::StartSearch => {
+            CommandType::ToggleCardSide => {
+                // On search screen, toggle search type
+                let state = self.app.state_store.read().await;
+                let current_screen = state.get_state().current_screen.clone();
+                drop(state);
+                if matches!(current_screen, Screen::Search) {
+                    self.app.state_store.read().await.update_state(|state| {
+                        let current = state.ui_state.get("search_type").cloned().unwrap_or("Decks".to_string());
+                        let new_type = if current == "Decks" { "Cards" } else { "Decks" };
+                        state.ui_state.insert("search_type".to_string(), new_type.to_string());
+                    }).ok();
+                }
+            }
+
+            CommandType::SearchDecks(query) | CommandType::SearchCards(query) => {
+                // Update search state, navigate if not already on Search screen
+                let state = self.app.state_store.read().await;
+                let current_screen = state.get_state().current_screen.clone();
+                drop(state);
+                if !matches!(current_screen, Screen::Search) {
+                    self.navigate_to_screen(Screen::Search).await?;
+                }
+                self.app.state_store.read().await.update_state(|state| {
+                    state.ui_state.insert("search_query".to_string(), query.clone());
+                    let search_type = if matches!(command.command_type, CommandType::SearchDecks(_)) {
+                        "Decks"
+                    } else {
+                        "Cards"
+                    };
+                    state.ui_state.insert("search_type".to_string(), search_type.to_string());
+                }).ok();
+            }
+
+            CommandType::StartSearch => {
                 self.navigate_to_screen(Screen::Search).await?;
             }
 
@@ -241,6 +274,89 @@ impl<'a> AppController<'a> {
                     state.show_message(
                         crate::ui::state::store::SystemMessage::success("Success", "Statistics refreshed")
                     )?;
+                }
+            }
+
+            CommandType::ConfirmSetting => {
+                // Navigate to sub-settings based on current index
+                let index = {
+                    let s = self.app.state_store.read().await;
+                    s.get_main_menu_selected()
+                };
+                let target = match index {
+                    0 => Screen::StudyPrefs,
+                    1 => Screen::UiSettings,
+                    2 => Screen::DataManage,
+                    _ => Screen::Settings,
+                };
+                self.navigate_to_screen(target).await?;
+            }
+
+            CommandType::NavigateLeft | CommandType::NavigateRight => {
+                // Adjust values in settings sub-screens
+                let is_decrement = matches!(&command.command_type, CommandType::NavigateLeft);
+                let state = self.app.state_store.read().await;
+                let current_screen = state.get_state().current_screen.clone();
+                drop(state);
+                if matches!(current_screen, Screen::StudyPrefs) {
+                    self.app.state_store.read().await.update_state(|state| {
+                        let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        match idx {
+                            0 => {
+                                let val = state.ui_state.get("new_cards_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
+                                if is_decrement { state.ui_state.insert("new_cards_per_day".to_string(), (val.saturating_sub(1)).to_string()); }
+                                else { state.ui_state.insert("new_cards_per_day".to_string(), (val + 1).to_string()); }
+                            }
+                            1 => {
+                                let val = state.ui_state.get("max_reviews_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
+                                if is_decrement { state.ui_state.insert("max_reviews_per_day".to_string(), (val.saturating_sub(1)).to_string()); }
+                                else { state.ui_state.insert("max_reviews_per_day".to_string(), (val + 1).to_string()); }
+                            }
+                            2 | 3 => {
+                                // Toggle boolean
+                                let key = if idx == 2 { "auto_advance" } else { "show_hint" };
+                                let val = state.ui_state.get(key).map(|s| s == "true").unwrap_or(false);
+                                state.ui_state.insert(key.to_string(), (!val).to_string());
+                            }
+                            _ => {}
+                        }
+                    }).ok();
+                } else if matches!(current_screen, Screen::UiSettings) {
+                    self.app.state_store.read().await.update_state(|state| {
+                        let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        if idx == 1 {
+                            let theme = state.ui_state.get("theme").cloned().unwrap_or_else(|| state.user_preferences.theme.clone());
+                            let themes = vec!["default", "dark", "light"];
+                            let ci = themes.iter().position(|t| t == &theme).unwrap_or(0);
+                            let ni = if is_decrement { ci.saturating_sub(1) } else { (ci + 1).min(2) };
+                            state.ui_state.insert("theme".to_string(), themes[ni].to_string());
+                            state.user_preferences.theme = themes[ni].to_string();
+                        }
+                    }).ok();
+                }
+            }
+
+            CommandType::NavigateToMainMenu => {
+                self.navigate_to_screen(Screen::MainMenu).await?;
+            }
+
+            CommandType::NavigateBack => {
+                let state = self.app.state_store.read().await;
+                let screen = state.get_state().current_screen;
+                drop(state);
+                match &screen {
+                    Screen::StudyPrefs | Screen::UiSettings | Screen::DataManage => {
+                        self.navigate_to_screen(Screen::Settings).await?;
+                    }
+                    Screen::Search | Screen::Help => {
+                        self.navigate_to_screen(Screen::MainMenu).await?;
+                    }
+                    Screen::DeckManagement => {
+                        self.navigate_to_screen(Screen::MainMenu).await?;
+                    }
+                    _ => {
+                        self.navigate_to_screen(Screen::MainMenu).await?;
+                    }
                 }
             }
 
@@ -396,6 +512,24 @@ impl<'a> AppController<'a> {
                     }
                     Screen::Statistics => {
                         // Statistics specific setup
+                    }
+                    Screen::StudyPrefs => {
+                        state.ui_state.entry("prefs_index".to_string()).or_insert("0".to_string());
+                        state.ui_state.entry("new_cards_per_day".to_string()).or_insert("20".to_string());
+                        state.ui_state.entry("max_reviews_per_day".to_string()).or_insert("200".to_string());
+                        state.ui_state.entry("auto_advance".to_string()).or_insert(state.user_preferences.auto_advance.to_string());
+                        state.ui_state.entry("show_hint".to_string()).or_insert("true".to_string());
+                    }
+                    Screen::UiSettings => {
+                        state.ui_state.entry("ui_settings_index".to_string()).or_insert("0".to_string());
+                        state.ui_state.entry("theme".to_string()).or_insert(state.user_preferences.theme.clone());
+                    }
+                    Screen::DataManage => {
+                        state.ui_state.entry("data_index".to_string()).or_insert("0".to_string());
+                    }
+                    Screen::Search => {
+                        state.ui_state.entry("search_type".to_string()).or_insert("Decks".to_string());
+                        state.ui_state.entry("search_query".to_string()).or_insert(String::new());
                     }
                     _ => {}
                 }

@@ -3,7 +3,7 @@
 > 基于代码深度分析，按优先级排序
 >
 > **最后更新**: 2026-04-12
-> **整体进度**: P0 F1-F4 全部完成，P1 F5-F7 全部完成，F8(主题)已移出，F10(帮助)已接入导航
+> **整体进度**: P0 F1-F4 全部完成，P1 F5-F7 全部完成，F8(主题)已移出，F10(帮助)已接入导航，Settings子屏幕+搜索输入已接入
 
 ---
 
@@ -120,6 +120,25 @@
 | F10.2 | 帮助内容显示 | `ankitui-tui/src/ui/components/screens/help/mod.rs` | ✅ 已完成 |
 | F10.3 | 帮助屏幕导航接入 | `ankitui-tui/src/ui/state/store.rs` + `render/mod.rs` | ✅ Screen::Help + render + Esc 返回 |
 
+### 4. Settings 子屏幕接入 (100% 完成) ✅
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F11.1 | ConfirmSetting 命令处理 | `ankitui-tui/src/app/controller.rs` | ✅ Enter 根据索引跳转 |
+| F11.2 | StudyPrefs 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_study_prefs |
+| F11.3 | UiSettings 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_ui_settings |
+| F11.4 | DataManage 子屏幕 | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_data_manage |
+| F11.5 | ←→ 调整数值 | `ankitui-tui/src/app/controller.rs` | ✅ NavigateLeft/Right 处理 |
+| F11.6 | Esc 返回 Settings | `ankitui-tui/src/app/controller.rs` | ✅ NavigateBack 处理 |
+
+### 5. 搜索屏幕输入接入 (100% 完成) ✅
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F12.1 | 字符输入处理 | `ankitui-tui/src/app/event_loop.rs` | ✅ Search 屏幕捕获字符 |
+| F12.2 | Tab 切换搜索类型 | `ankitui-tui/src/app/event_loop.rs` | ✅ ToggleCardSide |
+| F12.3 | 搜索状态初始化 | `ankitui-tui/src/app/controller.rs` | ✅ update_state_for_screen |
+
 ---
 
 ## 统计概览
@@ -133,7 +152,7 @@
 | **设置管理** | 100% | ✅ 已完成 |
 | **导入导出** | 70% | F1 (P0) |
 | **媒体管理** | 50% | F3 (P2) |
-| **导航系统** | 90% | ✅ 已完成 |
+| **导航系统** | 95% | ✅ 已完成 |
 | **主题系统** | 60% | 已移出TODO |
 | **帮助系统** | 100% | ✅ 已接入导航 |
 

@@ -357,6 +357,16 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             handle_delete_contextual(screen, current_state)
         }
 
+        // Character input for search screen
+        (KeyCode::Char(c), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
+            Command::user(CommandType::SearchDecks(c.to_string()))
+        }
+
+        // Backspace for search screen
+        (KeyCode::Backspace, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
+            Command::user(CommandType::Unknown) // Will be handled by input handler
+        }
+
         _ => Command::user(CommandType::Unknown),
     }
 }
@@ -679,6 +689,7 @@ fn handle_tab(screen: crate::ui::state::Screen, _current_state: &AppState) -> Co
         crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateRight),
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::ToggleCardSide),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::SkipCurrentCard),
+        crate::ui::state::Screen::Search => Command::user(CommandType::ToggleCardSide), // Toggle search type
         _ => Command::user(CommandType::NavigateDown),
     }
 }

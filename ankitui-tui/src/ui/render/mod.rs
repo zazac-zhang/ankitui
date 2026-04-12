@@ -107,6 +107,15 @@ impl Renderer for DefaultRenderer {
             Screen::Help => {
                 render_help_screen(f, area, app, state);
             }
+            Screen::StudyPrefs => {
+                render_study_prefs(f, area, app, state);
+            }
+            Screen::UiSettings => {
+                render_ui_settings(f, area, app, state);
+            }
+            Screen::DataManage => {
+                render_data_manage(f, area, app, state);
+            }
             _ => {
                 // Default to main menu
                 render_main_menu(f, area, 0);
@@ -816,4 +825,142 @@ fn render_help_screen(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app:
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
     f.render_widget(help, chunks[3]);
+}
+
+/// Study preferences sub-screen
+fn render_study_prefs(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app: &crate::app::main_app::App, state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders, List, ListItem},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("📖 Study Preferences")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Study Prefs"));
+    f.render_widget(header, chunks[0]);
+
+    let nav_index = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+    let items: Vec<(&str, String)> = vec![
+        ("New cards per day", state.ui_state.get("new_cards_per_day").cloned().unwrap_or("20".to_string())),
+        ("Max reviews per day", state.ui_state.get("max_reviews_per_day").cloned().unwrap_or("200".to_string())),
+        ("Auto-advance", state.ui_state.get("auto_advance").map(|s| if s == "true" { "On".to_string() } else { "Off".to_string() }).unwrap_or("Off".to_string())),
+        ("Show hint on question", state.ui_state.get("show_hint").map(|s| if s == "true" { "On".to_string() } else { "Off".to_string() }).unwrap_or("On".to_string())),
+    ];
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .enumerate()
+        .map(|(i, (label, value))| {
+            let prefix = if i == nav_index { "▶" } else { " " };
+            ListItem::new(format!("{} {}: {}", prefix, label, value))
+        })
+        .collect();
+    let list = List::new(list_items)
+        .block(Block::default().borders(Borders::ALL).title("Settings"));
+    f.render_widget(list, chunks[1]);
+
+    let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Ctrl+S: Save | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
+}
+
+/// UI settings sub-screen
+fn render_ui_settings(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app: &crate::app::main_app::App, state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders, List, ListItem},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("🎨 UI Customization")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("UI Settings"));
+    f.render_widget(header, chunks[0]);
+
+    let nav_index = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+    let prefs = &state.user_preferences;
+    let items: Vec<(&str, String)> = vec![
+        ("Display name", prefs.display_name.clone()),
+        ("Theme", prefs.theme.clone()),
+        ("Auto-advance", if prefs.auto_advance { "On".to_string() } else { "Off".to_string() }),
+        ("Show progress", if prefs.show_progress { "On".to_string() } else { "Off".to_string() }),
+    ];
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .enumerate()
+        .map(|(i, (label, value))| {
+            let prefix = if i == nav_index { "▶" } else { " " };
+            ListItem::new(format!("{} {}: {}", prefix, label, value))
+        })
+        .collect();
+    let list = List::new(list_items)
+        .block(Block::default().borders(Borders::ALL).title("Settings"));
+    f.render_widget(list, chunks[1]);
+
+    let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust theme | Ctrl+S: Save | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
+}
+
+/// Data management sub-screen
+fn render_data_manage(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app: &crate::app::main_app::App, state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders, List, ListItem},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("💾 Data Management")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Data Management"));
+    f.render_widget(header, chunks[0]);
+
+    let nav_index = state.ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+    let ops = ["Import decks from Anki", "Export data to file", "Create backup", "Restore from backup", "Clear all data"];
+    let list_items: Vec<ListItem> = ops
+        .iter()
+        .enumerate()
+        .map(|(i, op)| {
+            let prefix = if i == nav_index { "▶" } else { " " };
+            ListItem::new(format!("{} {}", prefix, op))
+        })
+        .collect();
+    let list = List::new(list_items)
+        .block(Block::default().borders(Borders::ALL).title("Operations"));
+    f.render_widget(list, chunks[1]);
+
+    let status = state.message.as_ref().map(|m| m.content.clone()).unwrap_or_else(|| "↑↓: Navigate | Enter: Execute | Esc: Back".to_string());
+    let help = Paragraph::new(status)
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Info"));
+    f.render_widget(help, chunks[2]);
 }
