@@ -24,6 +24,13 @@ pub struct AppState {
     pub ui_state: HashMap<String, String>,
     pub last_action: Option<String>,
     pub action_history: Vec<String>,
+
+    // Menu navigation state
+    pub main_menu_selected: usize,
+    pub deck_list_selected: Option<usize>,
+
+    // Cached deck count
+    pub deck_count: usize,
 }
 
 /// UI screen types
@@ -141,6 +148,9 @@ impl Default for AppState {
             ui_state: HashMap::new(),
             last_action: None,
             action_history: Vec::new(),
+            main_menu_selected: 0,
+            deck_list_selected: None,
+            deck_count: 0,
         }
     }
 }
@@ -265,6 +275,54 @@ impl StateStore {
     pub fn set_current_session(&self, session: Option<SessionState>) -> TuiResult<()> {
         self.update_state(|state| {
             state.current_session = session;
+        })
+    }
+
+    // Menu navigation methods
+
+    /// Get main menu selected index
+    pub fn get_main_menu_selected(&self) -> usize {
+        self.state.read().unwrap().main_menu_selected
+    }
+
+    /// Set main menu selected index
+    pub fn set_main_menu_selected(&self, index: usize) -> TuiResult<()> {
+        self.update_state(|state| {
+            state.main_menu_selected = index;
+        })
+    }
+
+    /// Navigate main menu up
+    pub fn navigate_main_menu_up(&self) -> TuiResult<()> {
+        self.update_state(|state| {
+            if state.main_menu_selected > 0 {
+                state.main_menu_selected -= 1;
+            } else {
+                state.main_menu_selected = 4; // Wrap to last item (Quit)
+            }
+        })
+    }
+
+    /// Navigate main menu down
+    pub fn navigate_main_menu_down(&self) -> TuiResult<()> {
+        self.update_state(|state| {
+            if state.main_menu_selected < 4 {
+                state.main_menu_selected += 1;
+            } else {
+                state.main_menu_selected = 0; // Wrap to first item
+            }
+        })
+    }
+
+    /// Get deck list selected index
+    pub fn get_deck_list_selected(&self) -> Option<usize> {
+        self.state.read().unwrap().deck_list_selected
+    }
+
+    /// Set deck list selected index
+    pub fn set_deck_list_selected(&self, index: Option<usize>) -> TuiResult<()> {
+        self.update_state(|state| {
+            state.deck_list_selected = index;
         })
     }
 
@@ -424,6 +482,9 @@ impl AppState {
             ui_state: HashMap::new(),
             last_action: None,
             action_history: Vec::new(),
+            main_menu_selected: 0,
+            deck_list_selected: None,
+            deck_count: 0,
         }
     }
 

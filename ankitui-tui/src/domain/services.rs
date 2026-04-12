@@ -4,10 +4,13 @@
 //! and TUI application layer
 
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use crate::utils::error::{TuiResult, TuiError};
-use ankitui_core::{DeckManager, SessionController, Scheduler};
-use ankitui_core::data::{Card, Deck, CardContent};
-use ankitui_core::core::{Rating, DeckStats};
+use crate::domain::viewmodels::StudySessionStats;
+use ankitui_core::{DeckManager, SessionController};
+use ankitui_core::core::Rating;
+use ankitui_core::data::{Card, CardContent, Deck};
+use ankitui_core::core::DeckStats;
 use uuid::Uuid;
 
 /// Deck Service - High-level deck operations
@@ -71,12 +74,12 @@ impl DeckService {
 
 /// Study Service - Manages study sessions and card reviews
 pub struct StudyService {
-    session_controller: Arc<SessionController>,
+    session_controller: Arc<Mutex<SessionController>>,
     deck_manager: Arc<DeckManager>,
 }
 
 impl StudyService {
-    pub fn new(session_controller: Arc<SessionController>, deck_manager: Arc<DeckManager>) -> Self {
+    pub fn new(session_controller: Arc<Mutex<SessionController>>, deck_manager: Arc<DeckManager>) -> Self {
         Self {
             session_controller,
             deck_manager,
@@ -101,26 +104,49 @@ impl StudyService {
 
     /// Start a study session
     pub async fn start_session(&mut self, deck_uuid: Uuid) -> TuiResult<()> {
-        // Implementation would use session controller
-        Ok(())
+        let mut controller = self.session_controller.lock().await;
+        controller
+            .start_session(deck_uuid)
+            .await
+            .map_err(|e| TuiError::Core(e.to_string()))
     }
 
     /// End the current study session
-    pub async fn end_session(&mut self) -> TuiResult<crate::domain::viewmodels::StudySessionStats> {
-        // Return empty stats for now
-        Ok(crate::domain::viewmodels::StudySessionStats::new())
+    pub async fn end_session(&mut self) -> TuiResult<StudySessionStats> {
+        let mut controller = self.session_controller.lock().await;
+        let stats = controller
+            .end_session()
+            .await
+            .map_err(|e| TuiError::Core(e.to_string()))?;
+
+        Ok(StudySessionStats {
+            cards_studied: stats.total_cards_studied,
+            total_cards_studied: stats.total_cards_studied,
+            new_cards: stats.new_cards_studied,
+            review_cards: stats.review_cards_studied,
+            correct_answers: stats.correct_answers,
+            average_time_seconds: stats.average_response_time.unwrap_or(0.0),
+            started_at: stats.started_at,
+            ended_at: stats.ended_at,
+        })
     }
 
     /// Rate current card
     pub async fn rate_current_card(&mut self, rating: Rating) -> TuiResult<()> {
-        // Implementation would use session controller
-        Ok(())
+        let mut controller = self.session_controller.lock().await;
+        controller
+            .review_current_card(rating)
+            .await
+            .map_err(|e| TuiError::Core(e.to_string()))
     }
 
     /// Skip current card
     pub async fn skip_current_card(&mut self) -> TuiResult<()> {
-        // Implementation would skip current card
-        Ok(())
+        let mut controller = self.session_controller.lock().await;
+        controller
+            .skip_current_card()
+            .await
+            .map_err(|e| TuiError::Core(e.to_string()))
     }
 }
 

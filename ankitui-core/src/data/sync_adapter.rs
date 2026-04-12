@@ -486,12 +486,22 @@ impl SyncAdapter {
         &self.content_base_dir
     }
 
-    /// Update card content
+    /// Update card content by reloading the deck, modifying the card, and saving
     pub async fn update_card_content(&self, card_content: &CardContent) -> Result<()> {
-        // Since ContentStore doesn't have individual card update, we need to
-        // load the deck, update the card, and save the entire deck
-        // For now, this is a placeholder implementation
-        Ok(())
+        // Find the deck that contains this card by iterating all decks
+        let decks = self.list_decks().await?;
+        for deck in &decks {
+            let result = self.content_store.load_deck(&deck.uuid);
+            if let Ok((deck_data, mut cards)) = result {
+                // Find and update the card
+                if let Some(card) = cards.iter_mut().find(|c| c.id == card_content.id) {
+                    *card = card_content.clone();
+                    self.content_store.save_deck(&deck_data, &cards)?;
+                    return Ok(());
+                }
+            }
+        }
+        anyhow::bail!("Card {} not found in any deck", card_content.id)
     }
 
     /// Get a deck by UUID

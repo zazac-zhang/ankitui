@@ -9,12 +9,12 @@ pub mod ui;
 pub mod utils;
 
 // Re-export key components for easier access
-pub use app::App;
+pub use app::{App, event_loop::run_event_loop_with_app};
 pub use domain::*;
 pub use utils::error::{TuiError, TuiResult};
 
 /// Version information
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = "0.1.0";
 
 /// Initialize the TUI application
 pub fn init() -> TuiResult<()> {

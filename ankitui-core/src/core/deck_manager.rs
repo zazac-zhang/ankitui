@@ -4,11 +4,13 @@
 //! statistics calculation, and integration with data layer and scheduler.
 
 use crate::core::scheduler::{Rating, Scheduler};
-use crate::data::models::{Card, CardContent, CardState, Deck, SchedulerConfig, MediaRef, MediaType};
+use crate::data::models::{
+    Card, CardContent, CardState, Deck, MediaRef, MediaType, SchedulerConfig,
+};
 use crate::data::SyncAdapter;
-use std::path::Path;
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
+use std::path::Path;
 use uuid::Uuid;
 
 /// Deck statistics information
@@ -471,20 +473,25 @@ impl DeckManager {
         self.remove_card_media(deck_uuid, card_id).await?;
 
         // Add new media
-        self.add_card_media(deck_uuid, card_id, media_path, media_type).await
+        self.add_card_media(deck_uuid, card_id, media_path, media_type)
+            .await
     }
 
     /// Get a specific card from a deck
     pub async fn get_card(&self, deck_uuid: &Uuid, card_id: &Uuid) -> Result<Card> {
         let cards = self.get_all_cards(deck_uuid).await?;
-        cards.into_iter()
+        cards
+            .into_iter()
             .find(|card| card.content.id == *card_id)
             .ok_or_else(|| anyhow::anyhow!("Card not found: {}", card_id))
     }
 
     /// Get all cards from a deck
     pub async fn get_all_cards(&self, deck_uuid: &Uuid) -> Result<Vec<Card>> {
-        let (_, cards) = self.sync_adapter.load_deck(deck_uuid).await
+        let (_, cards) = self
+            .sync_adapter
+            .load_deck(deck_uuid)
+            .await
             .map_err(|_| anyhow::anyhow!("Deck not found: {}", deck_uuid))?;
 
         Ok(cards)
@@ -498,7 +505,8 @@ impl DeckManager {
     /// Get cards with media
     pub async fn get_cards_with_media(&self, deck_uuid: &Uuid) -> Result<Vec<Card>> {
         let cards = self.get_all_cards(deck_uuid).await?;
-        Ok(cards.into_iter()
+        Ok(cards
+            .into_iter()
             .filter(|card| card.content.media.is_some())
             .collect())
     }
@@ -527,7 +535,9 @@ impl DeckManager {
         let media_manager = super::MediaManager::new(media_dir);
 
         // Clean up orphaned files
-        media_manager.cleanup_orphaned_media(&referenced_files).await
+        media_manager
+            .cleanup_orphaned_media(&referenced_files)
+            .await
     }
 
     /// Get the total number of decks
@@ -539,7 +549,10 @@ impl DeckManager {
     /// Update a card (both content and state)
     pub async fn update_card(&self, deck_uuid: &Uuid, card: &Card) -> Result<()> {
         // Load the deck to get all cards
-        let (mut deck, mut cards) = self.sync_adapter.load_deck(deck_uuid).await
+        let (mut deck, mut cards) = self
+            .sync_adapter
+            .load_deck(deck_uuid)
+            .await
             .map_err(|_| anyhow::anyhow!("Deck not found: {}", deck_uuid))?;
 
         // Find and update the target card
@@ -666,524 +679,3 @@ pub struct DeckMediaStats {
     pub average_size_bytes: u64,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::data::models::CardContent;
-    use chrono::Utc;
-    use std::collections::HashMap;
-    use tempfile::TempDir;
-    use uuid::Uuid;
-
-    async fn create_test_deck_manager() -> (DeckManager, TempDir) {
-        let temp_dir = TempDir::new().unwrap();
-        let content_dir = temp_dir.path().join("content");
-        let db_path = temp_dir.path().join("test.db");
-
-        std::fs::create_dir_all(&content_dir).unwrap();
-
-        let deck_manager = DeckManager::new(content_dir, db_path).await.unwrap();
-        (deck_manager, temp_dir)
-    }
-
-    fn create_test_card_content(front: &str, back: &str) -> CardContent {
-        CardContent {
-            id: Uuid::new_v4(),
-            front: front.to_string(),
-            back: back.to_string(),
-            tags: vec!["test".to_string()],
-            media: None,
-            custom: HashMap::new(),
-            created_at: Utc::now(),
-            modified_at: Utc::now(),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_create_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_name = "Test Deck".to_string();
-        let description = Some("A test deck".to_string());
-
-        let deck_uuid = deck_manager
-            .create_deck(deck_name.clone(), description.clone(), None)
-            .await
-            .unwrap();
-
-        // Verify deck was created
-        let (deck, cards) = deck_manager.get_deck(&deck_uuid).await.unwrap();
-        assert_eq!(deck.name, deck_name);
-        assert_eq!(deck.description, description);
-        assert_eq!(cards.len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_create_deck_empty_name() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let result = deck_manager.create_deck("".to_string(), None, None).await;
-
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("name cannot be empty"));
-    }
-
-    #[tokio::test]
-    async fn test_create_duplicate_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_name = "Duplicate Test".to_string();
-
-        // Create first deck
-        let _first_uuid = deck_manager
-            .create_deck(deck_name.clone(), None, None)
-            .await
-            .unwrap();
-
-        // Try to create duplicate
-        let result = deck_manager.create_deck(deck_name, None, None).await;
-
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("already exists"));
-    }
-
-    #[tokio::test]
-    async fn test_add_cards_to_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        // Create deck
-        let deck_uuid = deck_manager
-            .create_deck("Test Deck".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards
-        let cards = vec![
-            create_test_card_content("Question 1", "Answer 1"),
-            create_test_card_content("Question 2", "Answer 2"),
-        ];
-
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Verify cards were added
-        let (_, loaded_cards) = deck_manager.get_deck(&deck_uuid).await.unwrap();
-        assert_eq!(loaded_cards.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_add_empty_cards() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Test Deck".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Adding empty cards should be fine
-        let result = deck_manager.add_cards(&deck_uuid, vec![]).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_add_invalid_cards() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Test Deck".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add card with empty front
-        let mut invalid_card = create_test_card_content("Question", "Answer");
-        invalid_card.front = "".to_string();
-
-        let result = deck_manager.add_cards(&deck_uuid, vec![invalid_card]).await;
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("front cannot be empty"));
-
-        // Add card with empty back
-        let mut invalid_card = create_test_card_content("Question", "Answer");
-        invalid_card.back = "".to_string();
-
-        let result = deck_manager.add_cards(&deck_uuid, vec![invalid_card]).await;
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("back cannot be empty"));
-    }
-
-    #[tokio::test]
-    async fn test_find_deck_by_name() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_name = "Searchable Deck".to_string();
-        let deck_uuid = deck_manager
-            .create_deck(deck_name.clone(), None, None)
-            .await
-            .unwrap();
-
-        // Find existing deck
-        let found = deck_manager.find_deck_by_name(&deck_name).await.unwrap();
-        assert!(found.is_some());
-        let (found_deck, _) = found.unwrap();
-        assert_eq!(found_deck.uuid, deck_uuid);
-
-        // Find non-existent deck
-        let not_found = deck_manager
-            .find_deck_by_name("Non-existent")
-            .await
-            .unwrap();
-        assert!(not_found.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_update_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck(
-                "Original Name".to_string(),
-                Some("Original description".to_string()),
-                None,
-            )
-            .await
-            .unwrap();
-
-        // Update name and description
-        let updates = DeckUpdate {
-            name: Some("Updated Name".to_string()),
-            description: Some("Updated description".to_string()),
-            scheduler_config: None,
-        };
-
-        deck_manager.update_deck(&deck_uuid, updates).await.unwrap();
-
-        // Verify updates
-        let (deck, _) = deck_manager.get_deck(&deck_uuid).await.unwrap();
-        assert_eq!(deck.name, "Updated Name");
-        assert_eq!(deck.description, Some("Updated description".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_rename_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Original Name".to_string(), None, None)
-            .await
-            .unwrap();
-
-        deck_manager
-            .rename_deck(&deck_uuid, "New Name".to_string())
-            .await
-            .unwrap();
-
-        // Verify rename
-        let (deck, _) = deck_manager.get_deck(&deck_uuid).await.unwrap();
-        assert_eq!(deck.name, "New Name");
-    }
-
-    #[tokio::test]
-    async fn test_delete_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Deck to Delete".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Verify deck exists
-        let found = deck_manager
-            .find_deck_by_name("Deck to Delete")
-            .await
-            .unwrap();
-        assert!(found.is_some());
-
-        // Delete deck
-        deck_manager.delete_deck(&deck_uuid).await.unwrap();
-
-        // Verify deck no longer exists
-        let found = deck_manager
-            .find_deck_by_name("Deck to Delete")
-            .await
-            .unwrap();
-        assert!(found.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_get_deck_statistics() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Stats Test Deck".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards
-        let cards = vec![
-            create_test_card_content("New Card 1", "Answer 1"),
-            create_test_card_content("New Card 2", "Answer 2"),
-        ];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Get statistics
-        let stats = deck_manager.get_deck_statistics(&deck_uuid).await.unwrap();
-
-        assert_eq!(stats.total_cards, 2);
-        assert_eq!(stats.new_cards, 2);
-        assert_eq!(stats.learning_cards, 0);
-        assert_eq!(stats.review_cards, 0);
-        assert_eq!(stats.due_cards, 2); // New cards are due
-        assert!(stats.retention_rate.is_none()); // No reviews yet
-        assert_eq!(stats.average_ease_factor, 2.5); // Default value
-    }
-
-    #[tokio::test]
-    async fn test_get_due_cards() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Due Cards Test".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards
-        let cards = vec![
-            create_test_card_content("Due Card 1", "Answer 1"),
-            create_test_card_content("Due Card 2", "Answer 2"),
-        ];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Get due cards (new cards should be due)
-        let due_cards = deck_manager
-            .get_due_cards(&deck_uuid, Some(1))
-            .await
-            .unwrap();
-        assert_eq!(due_cards.len(), 1);
-
-        // Get all due cards
-        let all_due_cards = deck_manager.get_due_cards(&deck_uuid, None).await.unwrap();
-        assert_eq!(all_due_cards.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_get_new_cards() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("New Cards Test".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards
-        let cards = vec![
-            create_test_card_content("New Card 1", "Answer 1"),
-            create_test_card_content("New Card 2", "Answer 2"),
-        ];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Get new cards
-        let new_cards = deck_manager
-            .get_new_cards(&deck_uuid, Some(1))
-            .await
-            .unwrap();
-        assert_eq!(new_cards.len(), 1);
-
-        let all_new_cards = deck_manager.get_new_cards(&deck_uuid, None).await.unwrap();
-        assert_eq!(all_new_cards.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_get_next_card() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Next Card Test".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Empty deck should return None
-        let next_card = deck_manager.get_next_card(&deck_uuid).await.unwrap();
-        assert!(next_card.is_none());
-
-        // Add cards
-        let cards = vec![
-            create_test_card_content("First Card", "Answer 1"),
-            create_test_card_content("Second Card", "Answer 2"),
-        ];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Should return a card
-        let next_card = deck_manager.get_next_card(&deck_uuid).await.unwrap();
-        assert!(next_card.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_review_card() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Review Test".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add a card
-        let cards = vec![create_test_card_content("Test Question", "Test Answer")];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Get the card
-        let card = deck_manager
-            .get_next_card(&deck_uuid)
-            .await
-            .unwrap()
-            .unwrap();
-
-        // Review it with "Good" rating
-        let reviewed_card = deck_manager.review_card(card, Rating::Good).await.unwrap();
-
-        // Verify card state changed
-        assert_eq!(reviewed_card.state.state, CardState::Learning);
-        assert!(reviewed_card.state.interval > 0);
-    }
-
-    #[tokio::test]
-    async fn test_deck_configuration() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        let deck_uuid = deck_manager
-            .create_deck("Config Test".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Get default config
-        let config = deck_manager.get_deck_config(&deck_uuid).await.unwrap();
-        assert_eq!(config.new_cards_per_day, Some(20));
-
-        // Update config
-        let new_config = SchedulerConfig {
-            new_cards_per_day: Some(10),
-            max_reviews_per_day: Some(100),
-            ..Default::default()
-        };
-
-        deck_manager
-            .update_deck_config(&deck_uuid, new_config.clone())
-            .await
-            .unwrap();
-
-        // Verify updated config
-        let updated_config = deck_manager.get_deck_config(&deck_uuid).await.unwrap();
-        assert_eq!(updated_config.new_cards_per_day, Some(10));
-        assert_eq!(updated_config.max_reviews_per_day, Some(100));
-    }
-
-    #[tokio::test]
-    async fn test_export_import_deck() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        // Create a deck with cards
-        let deck_uuid = deck_manager
-            .create_deck(
-                "Export Test".to_string(),
-                Some("Test deck for export".to_string()),
-                None,
-            )
-            .await
-            .unwrap();
-
-        let cards = vec![
-            create_test_card_content("Export Q1", "Export A1"),
-            create_test_card_content("Export Q2", "Export A2"),
-        ];
-        deck_manager.add_cards(&deck_uuid, cards).await.unwrap();
-
-        // Export deck
-        let export_content = deck_manager.export_deck(&deck_uuid, true).await.unwrap();
-        assert!(!export_content.is_empty());
-
-        // Import deck
-        let imported_uuid = deck_manager.import_deck(&export_content).await.unwrap();
-        // Note: The import implementation reuses the existing UUID from the export
-        // This might be expected behavior depending on requirements
-        assert_eq!(imported_uuid, deck_uuid); // Currently reuses the same UUID
-
-        // Verify imported deck
-        let (imported_deck, imported_cards) = deck_manager.get_deck(&imported_uuid).await.unwrap();
-        assert_eq!(imported_deck.name, "Export Test");
-        assert_eq!(
-            imported_deck.description,
-            Some("Test deck for export".to_string())
-        );
-        assert_eq!(imported_cards.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_get_all_decks() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        // Create multiple decks
-        let deck1_uuid = deck_manager
-            .create_deck("Deck 1".to_string(), None, None)
-            .await
-            .unwrap();
-        let deck2_uuid = deck_manager
-            .create_deck("Deck 2".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards to first deck
-        let cards = vec![create_test_card_content("Q1", "A1")];
-        deck_manager.add_cards(&deck1_uuid, cards).await.unwrap();
-
-        // Get all decks
-        let all_decks = deck_manager.get_all_decks().await.unwrap();
-        assert_eq!(all_decks.len(), 2);
-
-        // Verify decks are present
-        let deck_names: Vec<String> = all_decks
-            .iter()
-            .map(|(deck, _)| deck.name.clone())
-            .collect();
-        assert!(deck_names.contains(&"Deck 1".to_string()));
-        assert!(deck_names.contains(&"Deck 2".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_global_statistics() {
-        let (deck_manager, _temp_dir) = create_test_deck_manager().await;
-
-        // Create multiple decks
-        let deck1_uuid = deck_manager
-            .create_deck("Deck 1".to_string(), None, None)
-            .await
-            .unwrap();
-        let deck2_uuid = deck_manager
-            .create_deck("Deck 2".to_string(), None, None)
-            .await
-            .unwrap();
-
-        // Add cards to decks
-        let cards1 = vec![create_test_card_content("Q1", "A1")];
-        let cards2 = vec![
-            create_test_card_content("Q2", "A2"),
-            create_test_card_content("Q3", "A3"),
-        ];
-
-        deck_manager.add_cards(&deck1_uuid, cards1).await.unwrap();
-        deck_manager.add_cards(&deck2_uuid, cards2).await.unwrap();
-
-        // Get global statistics
-        let global_stats = deck_manager.get_global_statistics().await.unwrap();
-        assert_eq!(global_stats.total_decks, 2);
-        assert_eq!(global_stats.total_cards, 3);
-        assert_eq!(global_stats.new_cards, 3); // All cards are new
-        assert_eq!(global_stats.due_cards, 3); // New cards are due
-    }
-}

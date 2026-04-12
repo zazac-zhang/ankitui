@@ -38,8 +38,10 @@ impl<'a> AppController<'a> {
 
         // Update UI state
         {
-            let mut state = self.app.state_store.write().await;
-            state.add_system_message(format!("Deck '{}' created successfully", name));
+            let state = self.app.state_store.read().await;
+            state.show_message(
+                crate::ui::state::store::SystemMessage::success("Success", &format!("Deck '{}' created successfully", name))
+            )?;
         }
 
         Ok(deck_id)
@@ -58,8 +60,10 @@ impl<'a> AppController<'a> {
 
         // Update UI state
         {
-            let mut state = self.app.state_store.write().await;
-            state.add_system_message(format!("Deck '{}' deleted successfully", deck_name));
+            let state = self.app.state_store.read().await;
+            state.show_message(
+                crate::ui::state::store::SystemMessage::success("Success", &format!("Deck '{}' deleted successfully", deck_name))
+            )?;
         }
 
         Ok(())
@@ -77,8 +81,10 @@ impl<'a> AppController<'a> {
         self.load_next_card().await?;
 
         {
-            let mut state = self.app.state_store.write().await;
-            state.add_system_message("Study session started".to_string());
+            let state = self.app.state_store.read().await;
+            state.show_message(
+                crate::ui::state::store::SystemMessage::success("Session Started", "Study session started")
+            )?;
         }
 
         Ok(())
@@ -88,12 +94,17 @@ impl<'a> AppController<'a> {
     pub async fn end_study_session(&mut self) -> TuiResult<()> {
         if let Ok(stats) = self.app.study_service_mut().end_session().await {
             {
-                let mut state = self.app.state_store.write().await;
-                state.add_system_message(format!(
-                    "Study session ended. Studied {} cards in {:.1} minutes",
-                    stats.cards_studied,
-                    stats.average_time_seconds
-                ));
+                let state = self.app.state_store.read().await;
+                state.show_message(
+                    crate::ui::state::store::SystemMessage::success(
+                        "Session Ended",
+                        &format!(
+                            "Study session ended. Studied {} cards in {:.1} minutes",
+                            stats.cards_studied,
+                            stats.average_time_seconds
+                        )
+                    )
+                )?;
             }
 
             // Navigate back to deck selection
@@ -128,8 +139,10 @@ impl<'a> AppController<'a> {
         self.app.deck_service().add_cards(&deck_id, cards).await?;
 
         {
-            let mut state = self.app.state_store.write().await;
-            state.add_system_message("Cards added successfully".to_string());
+            let state = self.app.state_store.read().await;
+            state.show_message(
+                crate::ui::state::store::SystemMessage::success("Success", "Cards added successfully")
+            )?;
         }
 
         Ok(())
@@ -185,11 +198,26 @@ impl<'a> AppController<'a> {
                 self.skip_current_card().await?;
             }
 
+            // Deck selection navigation commands
+            CommandType::SelectPreviousDeck => {
+                self.select_previous_deck().await?;
+            }
+
+            CommandType::SelectNextDeck => {
+                self.select_next_deck().await?;
+            }
+
+            CommandType::StartStudySessionDefault => {
+                self.start_study_session_with_selected_deck().await?;
+            }
+
             CommandType::LoadDecks => {
                 let _decks = self.load_all_decks().await?;
                 {
-                    let mut state = self.app.state_store.write().await;
-                    state.add_system_message("Decks loaded successfully".to_string());
+                    let state = self.app.state_store.read().await;
+                    state.show_message(
+                        crate::ui::state::store::SystemMessage::success("Success", "Decks loaded successfully")
+                    )?;
                 }
             }
 
@@ -201,8 +229,10 @@ impl<'a> AppController<'a> {
             CommandType::RefreshStatistics => {
                 let _stats = self.load_global_statistics().await?;
                 {
-                    let mut state = self.app.state_store.write().await;
-                    state.add_system_message("Statistics refreshed".to_string());
+                    let state = self.app.state_store.read().await;
+                    state.show_message(
+                        crate::ui::state::store::SystemMessage::success("Success", "Statistics refreshed")
+                    )?;
                 }
             }
 
@@ -224,15 +254,17 @@ impl<'a> AppController<'a> {
             if let Ok(Some(_card)) = self.app.study_service().get_next_card(&deck_id).await {
                 // Update state with current card
                 {
-                    let mut state = self.app.state_store.write().await;
-                    state.set_current_card_study(true);
+                    let state = self.app.state_store.read().await;
+                    state.set_current_card_study(true)?;
                 }
             } else {
                 // No more cards available
                 {
-                    let mut state = self.app.state_store.write().await;
-                    state.set_current_card_study(false);
-                    state.add_system_message("No more cards to study".to_string());
+                    let state = self.app.state_store.read().await;
+                    state.set_current_card_study(false)?;
+                    state.show_message(
+                        crate::ui::state::store::SystemMessage::info("Info", "No more cards to study")
+                    )?;
                 }
             }
         }
@@ -240,25 +272,126 @@ impl<'a> AppController<'a> {
         Ok(())
     }
 
-    async fn update_state_for_screen(&mut self, screen: Screen) -> TuiResult<()> {
-        {
-            let mut state = self.app.state_store.write().await;
-            state.set_current_screen(screen.clone());
+    /// Select previous deck in the deck list
+    pub async fn select_previous_deck(&mut self) -> TuiResult<()> {
+        let decks_result = self.load_all_decks().await;
 
-            // Update UI state based on screen
-            match screen {
-                Screen::DeckSelection => {
-                    state.set_loading(false);
-                }
-                Screen::StudySession => {
-                    // Study session specific setup
-                }
-                Screen::Statistics => {
-                    // Statistics specific setup
-                }
-                _ => {}
+        if let Ok(decks) = decks_result {
+            let deck_count = decks.len();
+
+            if deck_count == 0 {
+                return Ok(());
             }
+
+            let state_store = self.app.state_store.read().await;
+            state_store.update_state(|state| {
+                let current_selected = state.deck_list_selected.unwrap_or(0);
+                let new_selected = if current_selected == 0 {
+                    deck_count - 1
+                } else {
+                    current_selected - 1
+                };
+                state.deck_list_selected = Some(new_selected);
+            })?;
         }
+
+        Ok(())
+    }
+
+    /// Select next deck in the deck list
+    pub async fn select_next_deck(&mut self) -> TuiResult<()> {
+        let decks_result = self.load_all_decks().await;
+
+        if let Ok(decks) = decks_result {
+            let deck_count = decks.len();
+
+            if deck_count == 0 {
+                return Ok(());
+            }
+
+            let state_store = self.app.state_store.read().await;
+            state_store.update_state(|state| {
+                let current_selected = state.deck_list_selected.unwrap_or(0);
+                let new_selected = if current_selected >= deck_count - 1 {
+                    0
+                } else {
+                    current_selected + 1
+                };
+                state.deck_list_selected = Some(new_selected);
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// Start study session with the currently selected deck
+    pub async fn start_study_session_with_selected_deck(&mut self) -> TuiResult<()> {
+        let decks_result = self.load_all_decks().await;
+
+        if let Ok(decks) = decks_result {
+            if decks.is_empty() {
+                let state = self.app.state_store.read().await;
+                state.show_message(
+                    crate::ui::state::store::SystemMessage::warning("No Decks", "No decks available. Create a deck first.")
+                )?;
+                return Ok(());
+            }
+
+            let selected_index = {
+                let state = self.app.state_store.read().await;
+                state.get_deck_list_selected().unwrap_or(0)
+            };
+
+            if selected_index < decks.len() {
+                let (deck, _cards) = &decks[selected_index];
+                let deck_id = deck.uuid;
+
+                // Store selected deck ID and start session
+                {
+                    let state = self.app.state_store.read().await;
+                    state.set_selected_deck(Some(deck_id))?;
+                }
+
+                self.start_study_session(deck_id).await?;
+            } else {
+                let state = self.app.state_store.read().await;
+                state.show_message(
+                    crate::ui::state::store::SystemMessage::error("Error", "Invalid deck selection")
+                )?;
+            }
+        } else {
+            let state = self.app.state_store.read().await;
+            state.show_message(
+                crate::ui::state::store::SystemMessage::error("Error", "Failed to load decks")
+            )?;
+        }
+
+        Ok(())
+    }
+
+    async fn update_state_for_screen(&mut self, screen: Screen) -> TuiResult<()> {
+            let state_store = self.app.state_store.read().await;
+            state_store.update_state(|state| {
+                state.current_screen = screen.clone();
+
+                // Update UI state based on screen
+                match screen {
+                    Screen::DeckSelection => {
+                        state.loading = false;
+                        // Initialize deck selection if needed
+                        if state.deck_list_selected.is_none() {
+                            state.deck_list_selected = Some(0);
+                        }
+                    }
+                    Screen::StudySession => {
+                        // Study session specific setup
+                    }
+                    Screen::Statistics => {
+                        // Statistics specific setup
+                    }
+                    _ => {}
+                }
+            })?;
 
         Ok(())
     }

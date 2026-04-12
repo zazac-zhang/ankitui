@@ -209,6 +209,8 @@ impl StatsEngine {
         let mut relearning_cards = 0;
         let mut mature_cards = 0;
         let mut young_cards = 0;
+        let mut suspended_cards = 0;
+        let mut buried_cards = 0;
 
         let mut total_ease_factor = 0.0;
         let mut total_interval = 0;
@@ -228,8 +230,12 @@ impl StatsEngine {
                     }
                 }
                 CardState::Relearning => relearning_cards += 1,
-                CardState::Buried | CardState::Suspended => {
-                    // These cards are not active in learning
+                CardState::Buried => {
+                    buried_cards += 1;
+                    continue;
+                }
+                CardState::Suspended => {
+                    suspended_cards += 1;
                     continue;
                 }
             }
@@ -281,8 +287,8 @@ impl StatsEngine {
             due_this_month: due_counts.due_this_month,
             mature_cards,
             young_cards,
-            suspended_cards: 0, // TODO: Implement suspended cards
-            buried_cards: 0,    // TODO: Implement buried cards
+            suspended_cards,
+            buried_cards,
             average_ease_factor,
             average_interval,
             retention_rate,

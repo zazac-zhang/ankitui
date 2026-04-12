@@ -9,6 +9,7 @@ use uuid::Uuid;
 pub struct Navigator {
     history: Vec<Screen>,
     max_history_size: usize,
+    current_deck_id: Option<Uuid>,
 }
 
 impl Navigator {
@@ -16,6 +17,7 @@ impl Navigator {
         Self {
             history: Vec::new(),
             max_history_size: 50,
+            current_deck_id: None,
         }
     }
 
@@ -23,6 +25,7 @@ impl Navigator {
         Self {
             history: Vec::new(),
             max_history_size: max_size,
+            current_deck_id: None,
         }
     }
 
@@ -30,6 +33,13 @@ impl Navigator {
     pub fn navigate_to(&mut self, state: &mut AppState, screen: Screen) -> TuiResult<()> {
         // Add current screen to history
         self.history.push(state.current_screen.clone());
+
+        // Track current deck when navigating to study session
+        if matches!(screen, Screen::StudySession) {
+            self.current_deck_id = state.selected_deck_id;
+        } else if matches!(screen, Screen::MainMenu) {
+            self.current_deck_id = None;
+        }
 
         // Limit history size
         if self.history.len() > self.max_history_size {
@@ -45,6 +55,9 @@ impl Navigator {
     /// Navigate back to previous screen
     pub fn navigate_back(&mut self, state: &mut AppState) -> TuiResult<bool> {
         if let Some(previous_screen) = self.history.pop() {
+            if matches!(previous_screen, Screen::MainMenu) {
+                self.current_deck_id = None;
+            }
             state.current_screen = previous_screen;
             Ok(true)
         } else {
@@ -55,8 +68,14 @@ impl Navigator {
     /// Navigate to main menu
     pub fn navigate_to_main_menu(&mut self, state: &mut AppState) -> TuiResult<()> {
         self.history.clear();
+        self.current_deck_id = None;
         state.current_screen = Screen::MainMenu;
         Ok(())
+    }
+
+    /// Set the current deck explicitly (called when deck is selected)
+    pub fn set_current_deck(&mut self, deck_id: Option<Uuid>) {
+        self.current_deck_id = deck_id;
     }
 
     /// Get current history
@@ -76,9 +95,7 @@ impl Navigator {
 
     /// Get current deck ID (for study sessions)
     pub fn current_deck(&self) -> Option<Uuid> {
-        // This would be stored in app state during navigation
-        // For now, return None as placeholder
-        None
+        self.current_deck_id
     }
 }
 

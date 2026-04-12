@@ -488,12 +488,8 @@ impl CliApp {
         // Set verbosity level
         self.setup_logging();
 
-        // Override data directory if specified
-        if let Some(data_dir) = &self.cli.data_dir {
-            unsafe {
-                std::env::set_var("ANKITUI_DATA_DIR", data_dir);
-            }
-        }
+        // Data directory will be passed directly to ConfigManager
+        let data_dir_override = self.cli.data_dir.clone();
 
         // Handle no command case (default to review)
         let command = match &self.cli.command {
@@ -531,10 +527,7 @@ impl CliApp {
         };
 
         // Note: In a real implementation, you would set up proper logging here
-        // For now, we'll just use the log level
-        unsafe {
-            std::env::set_var("RUST_LOG", log_level.to_string());
-        }
+        // Log level is now handled directly in init_logging
     }
 
     /// Handle review command

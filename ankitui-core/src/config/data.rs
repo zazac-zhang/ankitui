@@ -57,7 +57,7 @@ pub struct DatabaseConfig {
     /// Enable foreign key constraints
     pub foreign_keys: bool,
 
-    /// Enable WAL mode
+    /// Enable WAL mode (DISABLED to avoid temp file issues)
     pub wal_mode: bool,
 
     /// Cache size in pages
@@ -651,11 +651,11 @@ impl Default for DatabaseConfig {
             pool_size: 10,
             timeout: 30,
             foreign_keys: true,
-            wal_mode: true,
+            wal_mode: false,
             cache_size: 2000,
             page_size: 4096,
             synchronous: "NORMAL".to_string(),
-            journal_mode: "WAL".to_string(),
+            journal_mode: "DELETE".to_string(),
             query_logging: false,
             connection_pooling: true,
             max_connections: 20,

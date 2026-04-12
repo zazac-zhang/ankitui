@@ -5,11 +5,68 @@
 use ankitui::util::cli::{Cli, CliApp};
 use anyhow::Result;
 use clap::Parser;
+use std::fs::OpenOptions;
+use std::io::Write;
+
+/// Initialize logging with both console and file output
+fn init_logging() {
+    // Load .env file if it exists
+    let _ = dotenv::dotenv();
+
+    // Use default log level - will be configurable via config file in future
+    let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+
+    // Create/open log file in current directory
+    let log_file_path = "./ankitui.log";
+
+    // Write session start marker to file
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_file_path)
+    {
+        let _ = writeln!(
+            file,
+            "\n=== AnkiTUI Session Started at {} ===",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f")
+        );
+    }
+
+    // Initialize logger with custom format that writes to both stderr and file
+    let log_file_path_clone = log_file_path.to_string();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(&log_level))
+        .format(move |_buf, record| {
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
+            let log_message = format!(
+                "{} [{}] {}:{} - {}",
+                timestamp,
+                record.level(),
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                record.args()
+            );
+
+            // Write to console (stderr)
+            eprintln!("{}", log_message);
+
+            // Also write to file
+            if let Ok(mut file) = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_file_path_clone)
+            {
+                let _ = writeln!(file, "{}", log_message);
+            }
+
+            Ok(())
+        })
+        .init();
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
-    env_logger::init();
+    init_logging();
 
     // Parse command line arguments
     let cli = Cli::parse();
@@ -33,7 +90,7 @@ async fn main() -> Result<()> {
 async fn run_tui_mode() -> Result<()> {
     use ankitui_core::config::ConfigManager;
     use ankitui_core::core::DeckManager;
-    use ankitui_tui::{App};
+    use ankitui_tui::App;
     use crossterm::{
         event::{DisableMouseCapture, EnableMouseCapture},
         execute,
@@ -41,7 +98,7 @@ async fn run_tui_mode() -> Result<()> {
     };
     use std::io;
     use std::time::Duration;
-    
+
     // Load configuration
     let config_manager = ConfigManager::new()?;
 
@@ -75,13 +132,8 @@ async fn run_tui_mode() -> Result<()> {
     // Initial data update
     app.update().await?;
 
-    // TODO: Implement proper event loop
-    // For now, just show a simple interface
-    println!("TUI mode started - Event loop implementation pending");
-    println!("Press Ctrl+C to exit");
-
-    // Simple wait loop (temporary implementation)
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    // Run the main event loop
+    ankitui_tui::run_event_loop_with_app(&mut app, None).await?;
 
     // Restore terminal
     disable_raw_mode()?;

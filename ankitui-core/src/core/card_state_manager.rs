@@ -142,9 +142,15 @@ impl CardStateManager {
         } else {
             // Check if card exists in deck and get its actual state
             if deck_cards.contains(card_id) {
-                // We would need to load the actual card to get its state
-                // For now, return Active as placeholder
-                Ok(CardStatus::Active)
+                if let Some(card_state) = self.state_store.load_card_state(card_id).await? {
+                    match card_state.state {
+                        CardState::Suspended => Ok(CardStatus::Suspended),
+                        CardState::Buried => Ok(CardStatus::Buried),
+                        _ => Ok(CardStatus::Active),
+                    }
+                } else {
+                    Ok(CardStatus::NotFound)
+                }
             } else {
                 Ok(CardStatus::NotFound)
             }

@@ -3,7 +3,7 @@
 use uuid::Uuid;
 use std::collections::HashMap;
 use crate::ui::state::Screen;
-use crate::domain::models::CardRating;
+use crate::domain::CardRating;
 
 /// Command types for the application - State-aware
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -195,14 +195,17 @@ impl Command {
             CommandType::RateCurrentCard(rating) => format!("Rate card: {:?}", rating),
             CommandType::ShowAnswer => "Show answer".to_string(),
             CommandType::HideAnswer => "Hide answer".to_string(),
-            CommandType::CreateCard(deck_id, front, _, tags) => {
-                format!("Create card in deck {}: {} [{}]", deck_id, front, tags.join(", "))
+            CommandType::CreateCard(front, back, tags) => {
+                format!("Create card: {} [{}]", front, tags.join(", "))
             }
-            CommandType::UpdateCard(card_id, front, _, tags) => {
-                format!("Update card {}: {} [{}]", card_id, front, tags.join(", "))
+            CommandType::UpdateCard(card_id, front, back, tags) => {
+                let tags_str = tags.clone().map_or_else(|| "no tags".to_string(), |t| t.join(", "));
+                format!("Update card {}: {} -> {} [{}]", card_id,
+                    front.as_deref().unwrap_or("no change"),
+                    back.as_deref().unwrap_or("no change"),
+                    tags_str)
             }
             CommandType::DeleteCard(card_id) => format!("Delete card: {}", card_id),
-            CommandType::LoadCards(deck_id) => format!("Load cards for deck: {}", deck_id),
             CommandType::LoadUserPreferences => "Load user preferences".to_string(),
             CommandType::UpdateUserPreferences(_) => "Update user preferences".to_string(),
             CommandType::LoadUserStats => "Load user statistics".to_string(),
@@ -236,7 +239,7 @@ impl Command {
             CommandType::Select | CommandType::Cancel | CommandType::Confirm | CommandType::Quit => true,
             CommandType::LoadDecks | CommandType::CreateDeck(_, _) | CommandType::SearchDecks(_) => matches!(screen, crate::ui::state::Screen::DeckSelection | crate::ui::state::Screen::MainMenu),
             CommandType::SelectDeck(_) | CommandType::DeleteDeck(_) | CommandType::UpdateDeck(_, _, _) => matches!(screen, crate::ui::state::Screen::DeckSelection),
-            CommandType::StartStudySession(_, _) | CommandType::LoadCards(_) => matches!(screen, crate::ui::state::Screen::DeckSelection),
+            CommandType::StartStudySession(_, _) => matches!(screen, crate::ui::state::Screen::DeckSelection),
             CommandType::EndStudySession | CommandType::RateCurrentCard(_) | CommandType::ShowAnswer | CommandType::HideAnswer |
             CommandType::PauseSession | CommandType::ResumeSession | CommandType::SkipCurrentCard => matches!(screen, crate::ui::state::Screen::StudySession),
             CommandType::CreateCard(_, _, _) | CommandType::UpdateCard(_, _, _, _) | CommandType::DeleteCard(_) | CommandType::SearchCards(_) => matches!(screen, crate::ui::state::Screen::CardEditor | crate::ui::state::Screen::DeckManagement),

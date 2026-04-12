@@ -1,14 +1,15 @@
 //! Event loop implementation with stateful event handling
 
-use std::time::{Duration, Instant};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use crossterm::event::{Event as CrosstermEvent, KeyEvent, MouseEvent, poll, read};
-use crate::ui::event::{Event, Command, CommandType};
-use crate::ui::state::{AppState, StateStore};
 use crate::domain::CardRating;
+use crate::ui::event::{Command, CommandType, Event};
+use crate::ui::render::Renderer;
+use crate::ui::state::{AppState, StateStore};
 use crate::utils::error::TuiResult;
-use crossterm::event::{KeyCode, KeyModifiers, MouseEventKind, MouseEvent as CrosstermMouseEvent};
+use crossterm::event::{poll, read, Event as CrosstermEvent, KeyEvent, MouseEvent};
+use crossterm::event::{KeyCode, KeyModifiers, MouseEvent as CrosstermMouseEvent, MouseEventKind};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 use uuid;
 
 /// Event loop configuration
@@ -135,7 +136,7 @@ impl Default for EventLoop {
     fn default() -> Self {
         Self::new(
             EventLoopConfig::default(),
-            Arc::new(RwLock::new(StateStore::new()))
+            Arc::new(RwLock::new(StateStore::new())),
         )
     }
 }
@@ -164,9 +165,8 @@ impl EventProcessor for ApplicationEventProcessor {
 
         // Handle the command using the app controller
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                self.app_controller.handle_command(command).await
-            })
+            tokio::runtime::Handle::current()
+                .block_on(async { self.app_controller.handle_command(command).await })
         })?;
 
         // Continue event loop unless it's a quit command
@@ -176,22 +176,76 @@ impl EventProcessor for ApplicationEventProcessor {
 
 /// Convenience function to run the event loop with an application
 pub async fn run_event_loop_with_app(
-    app: &mut crate::app::App,
+    mut app: &mut crate::app::App,
     config: Option<EventLoopConfig>,
 ) -> TuiResult<()> {
-    let event_loop_config = config.unwrap_or_default();
-    let state_store = Arc::new(RwLock::new(StateStore::new()));
+    use crossterm::{
+        event::{DisableMouseCapture, EnableMouseCapture},
+        execute,
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    };
+    use ratatui::backend::CrosstermBackend;
+    use std::io;
 
-    // Note: This is a simplified version. In practice, you'd need to handle
-    // the lifetime issues with AppController more carefully.
+    let event_loop_config = config.unwrap_or_default();
+
+    // Use the app's existing state store to maintain state consistency
+    let state_store = Arc::clone(&app.state_store);
 
     let mut event_loop = EventLoop::new(event_loop_config, state_store);
 
     // Initialize the application state
     app.initialize().await?;
 
-    // Run until quit
-    event_loop.run_until_quit().await?;
+    // Setup terminal for rendering
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = ratatui::Terminal::new(backend)?;
+
+    // Run the event loop and execute commands
+    loop {
+        // Sync renderer with current state
+        let current_state = app.state_store.read().await.get_state();
+        let current_screen = current_state.current_screen().clone();
+
+        // Render the UI with state information
+        let state_clone = current_state.clone();
+
+        terminal.draw(|f| {
+            let area = f.area();
+            // Split the borrow by taking the renderer first
+            let app_ptr = app as *const crate::app::main_app::App;
+            let renderer = app.renderer_mut();
+
+            // Now we can safely create an immutable reference
+            let app_ref = unsafe { &*app_ptr };
+            renderer.render_with_app_and_state(f, area, app_ref, &state_clone);
+        })?;
+
+        if let Some(command) = event_loop.run().await? {
+            // Check for quit command
+            if matches!(command.command_type, CommandType::Quit) {
+                break;
+            }
+
+            // Execute the command using the app
+            app.execute_command(command).await?;
+        }
+
+        // Small delay to prevent busy waiting
+        tokio::time::sleep(Duration::from_millis(16)).await; // ~60 FPS
+    }
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
 
     Ok(())
 }
@@ -219,34 +273,70 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Left, KeyModifiers::NONE) => handle_navigation_left(screen, current_state),
         (KeyCode::Right, KeyModifiers::NONE) => handle_navigation_right(screen, current_state),
 
+        // Page navigation keys
+        (KeyCode::PageUp, KeyModifiers::NONE) => handle_page_up(screen, current_state),
+        (KeyCode::PageDown, KeyModifiers::NONE) => handle_page_down(screen, current_state),
+        (KeyCode::Home, KeyModifiers::NONE) => handle_home(screen, current_state),
+        (KeyCode::End, KeyModifiers::NONE) => handle_end(screen, current_state),
+
         // Selection keys - context dependent
         (KeyCode::Enter, KeyModifiers::NONE) => handle_select_contextual(screen, current_state),
         (KeyCode::Char(' '), KeyModifiers::NONE) => handle_space_contextual(screen, current_state),
 
+        // Tab navigation
+        (KeyCode::Tab, KeyModifiers::NONE) => handle_tab(screen, current_state),
+        (KeyCode::BackTab, KeyModifiers::SHIFT) => handle_shift_tab(screen, current_state),
+
+        // Number shortcuts for main menu
+        (KeyCode::Char('1'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::DeckSelection))
+        }
+        (KeyCode::Char('2'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::DeckManagement))
+        }
+        (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Statistics))
+        }
+        (KeyCode::Char('4'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Settings))
+        }
+        (KeyCode::Char('5'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::Quit)
+        }
+
         // Study session keys - only active in study mode
-        (KeyCode::Char('1'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession =>
-            Command::user(CommandType::RateCurrentCard(CardRating::Again)),
-        (KeyCode::Char('2'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession =>
-            Command::user(CommandType::RateCurrentCard(CardRating::Hard)),
-        (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession =>
-            Command::user(CommandType::RateCurrentCard(CardRating::Good)),
-        (KeyCode::Char('4'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession =>
-            Command::user(CommandType::RateCurrentCard(CardRating::Easy)),
-        (KeyCode::Char(' '), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession =>
-            Command::user(CommandType::ShowAnswer),
+        (KeyCode::Char('1'), KeyModifiers::NONE)
+            if screen == crate::ui::state::Screen::StudySession =>
+        {
+            Command::user(CommandType::RateCurrentCard(CardRating::Again))
+        }
+        (KeyCode::Char('2'), KeyModifiers::NONE)
+            if screen == crate::ui::state::Screen::StudySession =>
+        {
+            Command::user(CommandType::RateCurrentCard(CardRating::Hard))
+        }
+        (KeyCode::Char('3'), KeyModifiers::NONE)
+            if screen == crate::ui::state::Screen::StudySession =>
+        {
+            Command::user(CommandType::RateCurrentCard(CardRating::Good))
+        }
+        (KeyCode::Char('4'), KeyModifiers::NONE)
+            if screen == crate::ui::state::Screen::StudySession =>
+        {
+            Command::user(CommandType::RateCurrentCard(CardRating::Easy))
+        }
 
         // Escape key - context dependent
         (KeyCode::Esc, KeyModifiers::NONE) => handle_escape_contextual(screen, current_state),
 
         // Quit keys - global
-        (KeyCode::Char('q'), KeyModifiers::CONTROL) |
-        (KeyCode::Char('c'), KeyModifiers::CONTROL) =>
-            Command::user(CommandType::Quit),
+        (KeyCode::Char('q'), KeyModifiers::CONTROL)
+        | (KeyCode::Char('c'), KeyModifiers::CONTROL) => Command::user(CommandType::Quit),
 
         // Help key - global
-        (KeyCode::F(1), KeyModifiers::NONE) |
-        (KeyCode::Char('?'), KeyModifiers::NONE) =>
-            Command::user(CommandType::ShowHelp),
+        (KeyCode::F(1), KeyModifiers::NONE) | (KeyCode::Char('?'), KeyModifiers::NONE) => {
+            Command::user(CommandType::ShowHelp)
+        }
 
         // Refresh keys - context dependent
         (KeyCode::F(5), KeyModifiers::NONE) => handle_refresh_contextual(screen, current_state),
@@ -255,11 +345,14 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Char('/'), KeyModifiers::NONE) => handle_search_contextual(screen, current_state),
 
         // Create key - context dependent
-        (KeyCode::Char('n'), KeyModifiers::CONTROL) => handle_create_contextual(screen, current_state),
+        (KeyCode::Char('n'), KeyModifiers::CONTROL) => {
+            handle_create_contextual(screen, current_state)
+        }
 
         // Delete key - context dependent
-        (KeyCode::Delete, KeyModifiers::NONE) |
-        (KeyCode::Backspace, KeyModifiers::CONTROL) => handle_delete_contextual(screen, current_state),
+        (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL) => {
+            handle_delete_contextual(screen, current_state)
+        }
 
         _ => Command::user(CommandType::Unknown),
     }
@@ -270,16 +363,19 @@ fn handle_mouse_event_contextual(event: CrosstermMouseEvent, current_state: &App
     let screen = current_state.current_screen();
 
     match event.kind {
-        MouseEventKind::Down(crossterm::event::MouseButton::Left) =>
-            handle_left_click_contextual(event.column, event.row, screen, current_state),
-        MouseEventKind::Down(crossterm::event::MouseButton::Right) =>
-            handle_right_click_contextual(event.column, event.row, screen, current_state),
-        MouseEventKind::ScrollUp =>
-            handle_scroll_up_contextual(event.column, event.row, screen, current_state),
-        MouseEventKind::ScrollDown =>
-            handle_scroll_down_contextual(event.column, event.row, screen, current_state),
-        MouseEventKind::Moved =>
-            Command::user(CommandType::MouseMove(event.column, event.row)),
+        MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+            handle_left_click_contextual(event.column, event.row, screen, current_state)
+        }
+        MouseEventKind::Down(crossterm::event::MouseButton::Right) => {
+            handle_right_click_contextual(event.column, event.row, screen, current_state)
+        }
+        MouseEventKind::ScrollUp => {
+            handle_scroll_up_contextual(event.column, event.row, screen, current_state)
+        }
+        MouseEventKind::ScrollDown => {
+            handle_scroll_down_contextual(event.column, event.row, screen, current_state)
+        }
+        MouseEventKind::Moved => Command::user(CommandType::MouseMove(event.column, event.row)),
         _ => Command::user(CommandType::Unknown),
     }
 }
@@ -289,9 +385,7 @@ fn handle_navigation_up(screen: crate::ui::state::Screen, _current_state: &AppSt
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectPreviousDeck),
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateUp),
-        crate::ui::state::Screen::StudySession => {
-            Command::user(CommandType::NavigateUp)
-        }
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateUp),
         _ => Command::user(CommandType::NavigateUp),
     }
@@ -301,27 +395,40 @@ fn handle_navigation_down(screen: crate::ui::state::Screen, _current_state: &App
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectNextDeck),
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateDown),
-        crate::ui::state::Screen::StudySession => {
-            Command::user(CommandType::NavigateDown)
-        }
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateDown),
         _ => Command::user(CommandType::NavigateDown),
     }
 }
 
-fn handle_navigation_left(_screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
-    Command::user(CommandType::NavigateLeft)
+fn handle_navigation_left(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateLeft),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateLeft),
+        crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateLeft),
+        _ => Command::user(CommandType::NavigateLeft),
+    }
 }
 
-fn handle_navigation_right(_screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
-    Command::user(CommandType::NavigateRight)
+fn handle_navigation_right(
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
+    match screen {
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateRight),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateRight),
+        crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateRight),
+        _ => Command::user(CommandType::NavigateRight),
+    }
 }
 
 // Context-specific selection handlers
 fn handle_select_contextual(screen: crate::ui::state::Screen, current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::Confirm),
-        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::StartStudySessionDefault),
+        crate::ui::state::Screen::DeckSelection => {
+            Command::user(CommandType::StartStudySessionDefault)
+        }
         crate::ui::state::Screen::StudySession => {
             if current_state.is_showing_answer() {
                 Command::user(CommandType::RateCurrentCard(CardRating::Good))
@@ -344,7 +451,9 @@ fn handle_space_contextual(screen: crate::ui::state::Screen, current_state: &App
                 Command::user(CommandType::ShowAnswer)
             }
         }
-        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectDeck(uuid::Uuid::nil())),
+        crate::ui::state::Screen::DeckSelection => {
+            Command::user(CommandType::SelectDeck(uuid::Uuid::nil()))
+        }
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::ToggleCardSide),
         _ => Command::user(CommandType::Select),
     }
@@ -368,7 +477,10 @@ fn handle_escape_contextual(screen: crate::ui::state::Screen, current_state: &Ap
 }
 
 // Context-specific refresh handlers
-fn handle_refresh_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_refresh_contextual(
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::LoadDecks),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::RefreshStatistics),
@@ -378,16 +490,26 @@ fn handle_refresh_contextual(screen: crate::ui::state::Screen, _current_state: &
 }
 
 // Context-specific search handlers
-fn handle_search_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_search_contextual(
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
-        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SearchDecks(String::new())),
-        crate::ui::state::Screen::StudySession => Command::user(CommandType::SearchCards(String::new())),
+        crate::ui::state::Screen::DeckSelection => {
+            Command::user(CommandType::SearchDecks(String::new()))
+        }
+        crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::SearchCards(String::new()))
+        }
         _ => Command::user(CommandType::StartSearch),
     }
 }
 
 // Context-specific create handlers
-fn handle_create_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_create_contextual(
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::CreateDeckPrompt),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::CreateCardPrompt),
@@ -396,21 +518,32 @@ fn handle_create_contextual(screen: crate::ui::state::Screen, _current_state: &A
 }
 
 // Context-specific delete handlers
-fn handle_delete_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_delete_contextual(
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::DeleteDeckPrompt),
-        crate::ui::state::Screen::CardEditor => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
+        crate::ui::state::Screen::CardEditor => {
+            Command::user(CommandType::DeleteCard(uuid::Uuid::nil()))
+        }
         _ => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
     }
 }
 
 // Mouse event handlers
-fn handle_left_click_contextual(x: u16, y: u16, screen: crate::ui::state::Screen, current_state: &AppState) -> Command {
+fn handle_left_click_contextual(
+    x: u16,
+    y: u16,
+    screen: crate::ui::state::Screen,
+    current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::StudySession => {
             if current_state.is_showing_answer() {
                 // Check if click is on a rating button
-                if y >= 10 && y <= 14 { // Rating button area
+                if y >= 10 && y <= 14 {
+                    // Rating button area
                     let rating = match x {
                         10..=15 => CardRating::Again,
                         17..=22 => CardRating::Hard,
@@ -430,15 +563,29 @@ fn handle_left_click_contextual(x: u16, y: u16, screen: crate::ui::state::Screen
     }
 }
 
-fn handle_right_click_contextual(x: u16, y: u16, screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_right_click_contextual(
+    x: u16,
+    y: u16,
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
-        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::ShowDeckContextMenu(x, y)),
-        crate::ui::state::Screen::StudySession => Command::user(CommandType::ShowCardContextMenu(x, y)),
+        crate::ui::state::Screen::DeckSelection => {
+            Command::user(CommandType::ShowDeckContextMenu(x, y))
+        }
+        crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::ShowCardContextMenu(x, y))
+        }
         _ => Command::user(CommandType::RightClick(x, y)),
     }
 }
 
-fn handle_scroll_up_contextual(_x: u16, _y: u16, screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_scroll_up_contextual(
+    _x: u16,
+    _y: u16,
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectPreviousDeck),
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::ScrollUp),
@@ -447,7 +594,12 @@ fn handle_scroll_up_contextual(_x: u16, _y: u16, screen: crate::ui::state::Scree
     }
 }
 
-fn handle_scroll_down_contextual(_x: u16, _y: u16, screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+fn handle_scroll_down_contextual(
+    _x: u16,
+    _y: u16,
+    screen: crate::ui::state::Screen,
+    _current_state: &AppState,
+) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectNextDeck),
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::ScrollDown),
@@ -460,11 +612,72 @@ fn handle_paste_contextual(content: String, current_state: &AppState) -> Command
     let screen = current_state.current_screen();
 
     match screen {
-        crate::ui::state::Screen::CardEditor => Command::user(CommandType::PasteCardContent(content)),
+        crate::ui::state::Screen::CardEditor => {
+            Command::user(CommandType::PasteCardContent(content))
+        }
         crate::ui::state::Screen::DeckSelection if content.contains('\n') => {
             // Try to import cards from pasted content
             Command::user(CommandType::ImportCards(content))
         }
         _ => Command::system(CommandType::Paste(content)),
+    }
+}
+
+// Page navigation handlers
+fn handle_page_up(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::NavigatePageUp),
+        crate::ui::state::Screen::Statistics => Command::user(CommandType::ScrollStatsUp),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::NavigatePageUp),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigatePageUp),
+        _ => Command::user(CommandType::NavigatePageUp),
+    }
+}
+
+fn handle_page_down(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::NavigatePageDown),
+        crate::ui::state::Screen::Statistics => Command::user(CommandType::ScrollStatsDown),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::NavigatePageDown),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigatePageDown),
+        _ => Command::user(CommandType::NavigatePageDown),
+    }
+}
+
+fn handle_home(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::NavigateHome),
+        crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateHome),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::NavigateHome),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateHome),
+        _ => Command::user(CommandType::NavigateHome),
+    }
+}
+
+fn handle_end(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::NavigateEnd),
+        crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateEnd),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::NavigateEnd),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateEnd),
+        _ => Command::user(CommandType::NavigateEnd),
+    }
+}
+
+// Tab navigation handlers
+fn handle_tab(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateRight),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::ToggleCardSide),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::SkipCurrentCard),
+        _ => Command::user(CommandType::NavigateDown),
+    }
+}
+
+fn handle_shift_tab(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
+    match screen {
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateLeft),
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::ToggleCardSide),
+        _ => Command::user(CommandType::NavigateUp),
     }
 }

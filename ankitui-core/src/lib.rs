@@ -5,6 +5,97 @@
 //!
 //! This library provides the essential functionality for managing flashcards,
 //! implementing the SM-2 spaced repetition algorithm, and handling data persistence.
+//! It serves as the foundation of the AnkiTUI application, offering a clean API
+//! for building spaced repetition learning interfaces.
+//!
+//! ## Architecture Overview
+//!
+//! The AnkiTUI Core library is organized into three main layers:
+//!
+//! ### Configuration Layer (`config`)
+//! Comprehensive configuration management with modular design:
+//! - **Main Config**: Unified configuration structure with validation
+//! - **Profiles**: Predefined templates for different user types (simple, student, power user)
+//! - **Sub-modules**: Daily limits, scheduler parameters, UI settings, shortcuts, data storage
+//! - **Provider Pattern**: Trait-based configuration access for dependency injection
+//! - **Environment Support**: Optional environment variable overrides for containers/CI
+//!
+//! ### Core Business Logic (`core`)
+//! Learning algorithms and session management:
+//! - **SM-2 Algorithm**: Full implementation of SuperMemo 2 spaced repetition
+//! - **Session Control**: Study session lifecycle and card queuing
+//! - **Deck Management**: Complete deck lifecycle operations and statistics
+//! - **Card State**: Individual card progression and state transitions
+//! - **Template Engine**: Dynamic content generation with templating support
+//! - **Statistics**: Learning analytics and progress tracking
+//! - **Advanced Features**: Incremental learning, media management, tag organization
+//!
+//! ### Data Management (`data`)
+//! Dual-store persistence architecture:
+//! - **Content Store**: User-defined content in TOML format (readable, editable)
+//! - **State Store**: System state in SQLite (performant, transactional)
+//! - **Models**: Type-safe data structures with serialization support
+//! - **Sync Adapter**: Coordinates between content and state stores
+//! - **Separation Principle**: Clear division between user content and system state
+//!
+//! ## Key Features
+//!
+//! - **Spaced Repetition**: Scientifically-backed SM-2 algorithm implementation
+//! - **Flexible Configuration**: Extensive customization options with profiles
+//! - **Data Integrity**: ACID-compliant storage with validation and error handling
+//! - **Performance**: Optimized for both single-card and bulk operations
+//! - **Extensibility**: Plugin-like architecture for future enhancements
+//! - **Testing**: Comprehensive test coverage with mockable components
+//!
+//! ## Usage Examples
+//!
+//! ```rust
+//! use ankitui_core::*;
+//!
+//! // Initialize the core system
+//! let config_manager = ConfigManager::new()?;
+//! let deck_manager = DeckManager::new();
+//! let scheduler = Scheduler::new(&config_manager);
+//!
+//! // Create a new deck
+//! let deck = Deck::new("Vocabulary", "English words and definitions");
+//! let deck_id = deck_manager.create_deck(deck)?;
+//!
+//! // Add cards to the deck
+//! let card = CardContent::new(
+//!     "Hello",
+//!     "A common greeting",
+//!     vec!["greeting", "basic"]
+//! );
+//! let card_id = deck_manager.add_card(deck_id, card)?;
+//!
+//! // Start a study session
+//! let session = SessionController::new(&deck_manager, &scheduler);
+//! let study_session = session.create_session(deck_id)?;
+//!
+//! // Study cards
+//! while let Some(card) = study_session.next_card()? {
+//!     // Present card to user and get their rating
+//!     let rating = get_user_rating(); // Again, Hard, Good, or Easy
+//!
+//!     // Update the card's schedule
+//!     scheduler.update_card_schedule(&card, rating)?;
+//! }
+//! ```
+//!
+//! ## Thread Safety and Performance
+//!
+//! All components are designed to be thread-safe and can be safely used across
+//! multiple threads. The data layer uses proper synchronization primitives
+//! and transactional operations to ensure data consistency even under concurrent
+//! access.
+//!
+//! ## Error Handling
+//!
+//! The library uses `anyhow::Result` for error handling, providing detailed
+//! error context and making it easy to debug configuration, data, or algorithm
+//! issues. All critical operations are validated and provide meaningful error
+//! messages.
 
 pub mod config;
 pub mod core;

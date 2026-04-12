@@ -5,6 +5,7 @@
 use ankitui_core::data::models::{Card, Deck, CardState};
 use std::collections::HashMap;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
 /// Deck view model for UI display with selection state
 #[derive(Debug, Clone)]
@@ -12,6 +13,8 @@ pub struct DeckViewModel {
     pub deck: Deck,
     pub selected: bool,
     pub focused: bool,
+    pub due_count: Option<usize>,
+    pub new_count: Option<usize>,
 }
 
 impl DeckViewModel {
@@ -20,6 +23,8 @@ impl DeckViewModel {
             deck,
             selected: false,
             focused: false,
+            due_count: None,
+            new_count: None,
         }
     }
 
@@ -28,6 +33,8 @@ impl DeckViewModel {
             deck,
             selected,
             focused: false,
+            due_count: None,
+            new_count: None,
         }
     }
 
@@ -36,7 +43,15 @@ impl DeckViewModel {
             deck,
             selected: false,
             focused,
+            due_count: None,
+            new_count: None,
         }
+    }
+
+    pub fn with_counts(mut self, due: usize, new: usize) -> Self {
+        self.due_count = Some(due);
+        self.new_count = Some(new);
+        self
     }
 
     pub fn display_name(&self) -> &str {
@@ -44,15 +59,11 @@ impl DeckViewModel {
     }
 
     pub fn has_due_cards(&self) -> bool {
-        // Check if deck has any cards with due state
-        // This would need to be calculated from deck data
-        self.deck.description.is_some() // placeholder
+        self.due_count.map(|c| c > 0).unwrap_or(false)
     }
 
     pub fn has_new_cards(&self) -> bool {
-        // Check if deck has any new cards
-        // This would need to be calculated from deck data
-        true // placeholder
+        self.new_count.map(|c| c > 0).unwrap_or(false)
     }
 }
 
@@ -295,3 +306,14 @@ pub enum SettingsSection {
     UiCustomization,
     DataManagement,
 }
+
+/// Application statistics for health monitoring
+#[derive(Debug, Clone)]
+pub struct AppStats {
+    pub total_decks: usize,
+    pub current_screen: crate::ui::state::store::Screen,
+    pub has_active_session: bool,
+    pub has_pending_error: bool,
+    pub is_loading: bool,
+}
+

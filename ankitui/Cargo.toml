@@ -30,6 +30,7 @@ csv = { workspace = true }
 toml = { workspace = true }
 dirs = { workspace = true }
 log = { workspace = true }
+dotenv = { workspace = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 

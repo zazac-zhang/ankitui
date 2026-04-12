@@ -593,7 +593,7 @@ mod tests {
                 reps: 1,
                 lapses: 0,
                 state: CardState::New,
-                updated_at: todo!(),
+                updated_at: Utc::now(),
             },
         }
     }

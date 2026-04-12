@@ -1,3 +1,9 @@
+//! Main AnkiTUI Application Library
+//!
+//! This is the main library that combines the core business logic and terminal UI layers
+//! to provide a complete spaced repetition learning system. It re-exports all the essential
+//! functionality from the core and TUI layers for convenient use by the main application.
+
 pub mod util;
 
 // ============================================================================

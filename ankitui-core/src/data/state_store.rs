@@ -5,7 +5,7 @@
 use crate::data::models::CardStateData;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePoolOptions, Row, SqlitePool};
+use sqlx::{sqlite::SqlitePoolOptions, Row, SqlitePool};
 use std::path::Path;
 use uuid::Uuid;
 
@@ -39,11 +39,11 @@ impl StateStore {
             .await
             .context("Failed to connect to SQLite database")?;
 
-        // Configure SQLite for performance
-        sqlx::query("PRAGMA journal_mode=WAL")
+        // Configure SQLite for performance - use DELETE mode to avoid temp file issues
+        sqlx::query("PRAGMA journal_mode=DELETE")
             .execute(&pool)
             .await
-            .context("Failed to set WAL mode")?;
+            .context("Failed to set journal mode")?;
 
         sqlx::query("PRAGMA synchronous=NORMAL")
             .execute(&pool)
@@ -114,11 +114,11 @@ impl StateStore {
         .await
         .context("Failed to create composite due_state index")?;
 
-        // Optimize SQLite settings
-        sqlx::query("PRAGMA journal_mode=WAL")
+        // Optimize SQLite settings - use DELETE mode to avoid temp file issues
+        sqlx::query("PRAGMA journal_mode=DELETE")
             .execute(pool)
             .await
-            .context("Failed to enable WAL mode")?;
+            .context("Failed to set journal mode")?;
 
         sqlx::query("PRAGMA synchronous=NORMAL")
             .execute(pool)
@@ -595,13 +595,11 @@ mod tests {
     use super::*;
     use crate::data::models::CardStateData;
     use chrono::Utc;
-    use tempfile::tempdir;
     use uuid::Uuid;
 
     async fn create_test_store() -> Result<StateStore> {
-        let temp_dir = tempdir()?;
-        let db_path = temp_dir.path().join("test.db");
-        StateStore::new(db_path).await
+        // Use in-memory database instead of temporary file
+        StateStore::new(":memory:").await
     }
 
     fn create_test_card_state() -> CardStateData {

@@ -98,7 +98,7 @@ pub struct StudyProgress {
 impl StateSelector<Option<StudyProgress>> for StudyProgressSelector {
     fn select(&self, state: &AppState) -> Option<StudyProgress> {
         state.current_session.as_ref().map(|session| StudyProgress {
-            cards_studied: session.current_position(),
+            cards_studied: session.current_position() as usize,
             total_cards: session.total_cards,
             progress_percentage: session.progress_percentage() as f64,
             remaining_new: session.remaining_new as u32,
@@ -143,7 +143,7 @@ impl StateSelector<MainMenuState> for MainMenuStateSelector {
     fn select(&self, state: &AppState) -> MainMenuState {
         MainMenuState {
             user_name: state.user_preferences.display_name.clone(),
-            has_decks: true, // TODO: Check if user has any decks
+            has_decks: state.deck_count > 0,
             has_active_session: state.current_session.is_some(),
         }
     }
