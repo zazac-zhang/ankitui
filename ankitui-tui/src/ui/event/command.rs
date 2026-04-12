@@ -115,6 +115,12 @@ pub enum CommandType {
 
     // Unknown/Unhandled commands
     Unknown,
+
+    // Card state management
+    BuryCard,
+    SuspendCard,
+    UnburyCard,
+    UnsuspendCard,
 }
 
 /// Command wrapper with metadata

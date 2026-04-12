@@ -42,6 +42,10 @@ const HELP_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
             ("2", "Hard - Review later"),
             ("3", "Good - Normal interval"),
             ("4", "Easy - Longer interval"),
+            ("B", "Bury card - Skip until next session"),
+            ("Ctrl+S", "Suspend card - Hide indefinitely"),
+            ("U", "Unbury card - Restore buried card"),
+            ("Ctrl+U", "Unsuspend card - Restore suspended card"),
         ],
     ),
     (

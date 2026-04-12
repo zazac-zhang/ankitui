@@ -222,6 +222,16 @@ impl SessionController {
         self.current_card.as_ref()
     }
 
+    /// Get the current deck ID
+    pub fn current_deck_id(&self) -> Option<Uuid> {
+        self.current_deck_id
+    }
+
+    /// Get all cards in the current deck
+    pub async fn get_deck_cards(&self, deck_id: &Uuid) -> Result<Vec<Card>> {
+        self.deck_manager.get_cards(deck_id).await
+    }
+
     /// Check if session has more cards
     pub fn has_more_cards(&self) -> bool {
         !self.card_queues.new_cards.is_empty()

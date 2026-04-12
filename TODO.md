@@ -51,9 +51,16 @@
 | F2.5 | `ScrollStatsUp/Down` 命令 | `ankitui-tui/src/app/main_app.rs` | ✅ 切换统计页 tab |
 | F2.6 | Help 页 ↑↓ 导航 | `ankitui-tui/src/app/main_app.rs` | ✅ 切换帮助分类 |
 
-### F3 - 接入核心功能（P2，0% 完成）
+### F3 - 卡片状态操作（P2，100% 完成）✅
 
-> 暂不实现，需要进一步规划
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F3.1 | `BuryCard` 命令 + 快捷键 `B` | `ankitui-tui/src/app/main_app.rs` + `event_loop.rs` | ✅ 已实现 |
+| F3.2 | `SuspendCard` 命令 + 快捷键 `Ctrl+S` | `ankitui-tui/src/app/main_app.rs` + `event_loop.rs` | ✅ 已实现 |
+| F3.3 | `UnburyCard` 命令 + 快捷键 `U` | `ankitui-tui/src/app/main_app.rs` + `event_loop.rs` | ✅ 已实现 |
+| F3.4 | `UnsuspendCard` 命令 + 快捷键 `Ctrl+U` | `ankitui-tui/src/app/main_app.rs` + `event_loop.rs` | ✅ 已实现 |
+| F3.5 | Help 页更新快捷键说明 | `ankitui-tui/src/ui/components/screens/help/mod.rs` | ✅ 已更新 |
+| F3.6 | SessionController 暴露 `current_deck_id()` 和 `get_deck_cards()` | `ankitui-core/src/core/session_controller.rs` | ✅ 已添加 |
 
 ### F4 - 设置持久化（P1，100% 完成）✅
 
@@ -63,9 +70,13 @@
 | F4.2 | UiSettings 持久化（主题/进度条） | `ankitui-tui/src/app/main_app.rs` | ✅ shutdown 时写入配置 |
 | F4.3 | 退出时保存设置 | `ankitui-tui/src/app/main_app.rs` + `ankitui/src/main.rs` | ✅ App::with_config_manager + shutdown |
 
-### F5 - 代码质量（P3，0% 完成）
+### F5 - 代码质量（P3，100% 完成）✅
 
-> 暂不实现
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F5.1 | SessionController 添加公共 getter | `ankitui-core/src/core/session_controller.rs` | ✅ current_deck_id() + get_deck_cards() |
+
+> `execute_command` 保持为 match 表达式（~400行），结构清晰，无需拆分
 
 ---
 
@@ -206,11 +217,11 @@
 | **导航系统** | 95% | ✅ Help 页导航已实现 |
 | **帮助系统** | 100% | ✅ 已完成 |
 | **主题系统** | 80% | ✅ 持久化已实现 |
-| **卡片状态操作** | 30% | ❌ 核心完成，无 UI |
+| **卡片状态操作** | 100% | ✅ Bury/Suspend/Unbury/Unsuspend 完成 |
 | **标签管理** | 10% | ❌ 核心完成，无 UI |
 | **媒体管理** | 10% | ❌ 核心完成，无 UI |
 | **高级卡片渲染** | 20% | ❌ 仅 Basic |
-| **代码质量** | 80% | ✅ 冗余已清理 |
+| **代码质量** | 100% | ✅ 已完成 |
 
 ---
 
@@ -220,5 +231,5 @@
 |--------|------|-----------|
 | ~~**P0**~~ | ~~F1 清理冗余代码~~ | ~~中等~~ ✅ 已完成 |
 | ~~**P1**~~ | ~~F2 补全桩代码 + F4 设置持久化~~ | ~~中等~~ ✅ 已完成 |
-| **P2** | F3 接入核心功能（Bury/Suspend → 标签 → 媒体 → 高级卡片） | 大 |
-| **P3** | F5 代码质量优化（拆分 execute_command） | 小 |
+| ~~**P2**~~ | ~~F3 卡片状态操作（Bury/Suspend/Unbury/Unsuspend）~~ | ~~小~~ ✅ 已完成 |
+| **P3** | F5 标签管理 UI → 媒体管理 UI → 高级卡片渲染 | 大 |

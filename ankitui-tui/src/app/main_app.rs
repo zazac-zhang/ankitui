@@ -547,6 +547,18 @@ impl App {
             CommandType::RefreshStatistics => {
                 // Refresh statistics
             }
+            CommandType::BuryCard => {
+                self.bury_current_card().await?;
+            }
+            CommandType::SuspendCard => {
+                self.suspend_current_card().await?;
+            }
+            CommandType::UnburyCard => {
+                self.unbury_current_card().await?;
+            }
+            CommandType::UnsuspendCard => {
+                self.unsuspend_current_card().await?;
+            }
             CommandType::Quit => {
                 self.stop();
             }
@@ -925,6 +937,134 @@ impl App {
             state_store.set_showing_answer(false)?;
         }
 
+        Ok(())
+    }
+
+    /// Bury the current card (skip until next session)
+    pub async fn bury_current_card(&mut self) -> TuiResult<()> {
+        let mut session = self.session_controller.lock().await;
+        if session.current_card().is_some() {
+            session.bury_current_card(ankitui_core::data::BuryReason::UserBury, None)
+                .await
+                .map_err(|e| TuiError::Core(format!("Failed to bury card: {}", e)))?;
+
+            drop(session);
+
+            // Reset answer view state and skip to next card
+            {
+                let state_store = self.state_store.read().await;
+                state_store.set_showing_answer(false)?;
+            }
+            self.study_service_mut().skip_current_card().await?;
+
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "Card Buried",
+                "Card will appear again in the next session",
+            ))?;
+        }
+        Ok(())
+    }
+
+    /// Suspend the current card (indefinitely)
+    pub async fn suspend_current_card(&mut self) -> TuiResult<()> {
+        let mut session = self.session_controller.lock().await;
+        if session.current_card().is_some() {
+            session.suspend_current_card("Suspended by user".into(), None)
+                .await
+                .map_err(|e| TuiError::Core(format!("Failed to suspend card: {}", e)))?;
+
+            drop(session);
+
+            // Reset answer view state and skip to next card
+            {
+                let state_store = self.state_store.read().await;
+                state_store.set_showing_answer(false)?;
+            }
+            self.study_service_mut().skip_current_card().await?;
+
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                "Card Suspended",
+                "Card will not appear until unsuspended",
+            ))?;
+        }
+        Ok(())
+    }
+
+    /// Unbury the current card
+    pub async fn unbury_current_card(&mut self) -> TuiResult<()> {
+        let (card_id, deck_id) = {
+            let session = self.session_controller.lock().await;
+            let card = session.current_card();
+            if card.is_none() {
+                return Ok(());
+            }
+            let card_id = card.unwrap().content.id;
+            let deck_id = session.current_deck_id();
+            (card_id, deck_id)
+        };
+
+        if let Some(deck_id) = deck_id {
+            let cards = {
+                let session = self.session_controller.lock().await;
+                session.get_deck_cards(&deck_id).await
+            };
+
+            if let Ok(cards) = cards {
+                if cards.iter().any(|c| c.content.id == card_id) {
+                    let mut session = self.session_controller.lock().await;
+                    session
+                        .unbury_card(card_id)
+                        .await
+                        .map_err(|e| TuiError::Core(format!("Failed to unbury card: {}", e)))?;
+                }
+            }
+
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "Card Unburied",
+                "Card will appear in the next session",
+            ))?;
+        }
+        Ok(())
+    }
+
+    /// Unsuspend the current card
+    pub async fn unsuspend_current_card(&mut self) -> TuiResult<()> {
+        let (card_id, deck_id) = {
+            let session = self.session_controller.lock().await;
+            let card = session.current_card();
+            if card.is_none() {
+                return Ok(());
+            }
+            let card_id = card.unwrap().content.id;
+            let deck_id = session.current_deck_id();
+            (card_id, deck_id)
+        };
+
+        if let Some(deck_id) = deck_id {
+            let cards = {
+                let session = self.session_controller.lock().await;
+                session.get_deck_cards(&deck_id).await
+            };
+
+            if let Ok(cards) = cards {
+                if cards.iter().any(|c| c.content.id == card_id) {
+                    let mut session = self.session_controller.lock().await;
+                    session
+                        .unsuspend_card(card_id)
+                        .await
+                        .map_err(|e| TuiError::Core(format!("Failed to unsuspend card: {}", e)))?;
+                }
+            }
+
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "Card Unsuspended",
+                "Card will appear in the learning queue",
+            ))?;
+        }
         Ok(())
     }
 

@@ -315,6 +315,20 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             Command::user(CommandType::SearchBackspace)
         }
 
+        // Study session: bury/suspend current card
+        (KeyCode::Char('b'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::BuryCard)
+        }
+        (KeyCode::Char('s'), KeyModifiers::CONTROL) if screen == crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::SuspendCard)
+        }
+        (KeyCode::Char('u'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::UnburyCard)
+        }
+        (KeyCode::Char('u'), KeyModifiers::CONTROL) if screen == crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::UnsuspendCard)
+        }
+
         _ => Command::user(CommandType::Unknown),
     }
 }
