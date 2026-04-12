@@ -121,6 +121,12 @@ pub enum CommandType {
     SuspendCard,
     UnburyCard,
     UnsuspendCard,
+
+    // Tag management
+    DeleteSelectedTag,
+
+    // Media management
+    CleanOrphanedMedia,
 }
 
 /// Command wrapper with metadata

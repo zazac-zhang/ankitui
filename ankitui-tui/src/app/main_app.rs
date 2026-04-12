@@ -559,6 +559,12 @@ impl App {
             CommandType::UnsuspendCard => {
                 self.unsuspend_current_card().await?;
             }
+            CommandType::DeleteSelectedTag => {
+                self.delete_selected_tag().await?;
+            }
+            CommandType::CleanOrphanedMedia => {
+                self.clean_orphaned_media().await?;
+            }
             CommandType::Quit => {
                 self.stop();
             }
@@ -607,7 +613,9 @@ impl App {
                 match screen {
                     crate::ui::state::store::Screen::StudyPrefs
                     | crate::ui::state::store::Screen::UiSettings
-                    | crate::ui::state::store::Screen::DataManage => {
+                    | crate::ui::state::store::Screen::DataManage
+                    | crate::ui::state::store::Screen::TagManagement
+                    | crate::ui::state::store::Screen::MediaManagement => {
                         state_store.navigate_to(crate::ui::state::store::Screen::Settings)?;
                     }
                     crate::ui::state::store::Screen::Search
@@ -629,6 +637,8 @@ impl App {
                     0 => crate::ui::state::store::Screen::StudyPrefs,
                     1 => crate::ui::state::store::Screen::UiSettings,
                     2 => crate::ui::state::store::Screen::DataManage,
+                    3 => crate::ui::state::store::Screen::TagManagement,
+                    4 => crate::ui::state::store::Screen::MediaManagement,
                     _ => crate::ui::state::store::Screen::Settings,
                 };
                 let state_store = self.state_store.read().await;
@@ -645,6 +655,12 @@ impl App {
                     }
                     crate::ui::state::store::Screen::DataManage => {
                         state.ui_state.entry("data_index".to_string()).or_insert("0".to_string());
+                    }
+                    crate::ui::state::store::Screen::TagManagement => {
+                        state.ui_state.entry("tag_index".to_string()).or_insert("0".to_string());
+                    }
+                    crate::ui::state::store::Screen::MediaManagement => {
+                        state.ui_state.entry("media_index".to_string()).or_insert("0".to_string());
                     }
                     _ => {}
                 }).ok();
@@ -761,6 +777,18 @@ impl App {
                         let state_store = self.state_store.read().await;
                         state_store.navigate_settings_up()?;
                     }
+                    crate::ui::state::store::Screen::TagManagement => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("tag_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 { state.ui_state.insert("tag_index".to_string(), (idx - 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::MediaManagement => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("media_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 { state.ui_state.insert("media_index".to_string(), (idx - 1).to_string()); }
+                        }).ok();
+                    }
                     _ => {}
                 }
             }
@@ -807,6 +835,18 @@ impl App {
                     crate::ui::state::store::Screen::Settings => {
                         let state_store = self.state_store.read().await;
                         state_store.navigate_settings_down()?;
+                    }
+                    crate::ui::state::store::Screen::TagManagement => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("tag_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx < 20 { state.ui_state.insert("tag_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::MediaManagement => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("media_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx < 8 { state.ui_state.insert("media_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
                     }
                     _ => {}
                 }
@@ -1065,6 +1105,135 @@ impl App {
                 "Card will appear in the learning queue",
             ))?;
         }
+        Ok(())
+    }
+
+    /// Delete the currently selected tag from all cards
+    pub async fn delete_selected_tag(&mut self) -> TuiResult<()> {
+        // Get the selected tag index
+        let tag_index = self.state_store.read().await.get_state()
+            .ui_state.get("tag_index")
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(0);
+
+        // Get all decks and build tag list
+        let decks = self.deck_service.get_all_decks().await?;
+        let mut tag_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        for (_, cards) in &decks {
+            for card in cards {
+                for tag in &card.content.tags {
+                    *tag_counts.entry(tag.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+        let mut tags: Vec<_> = tag_counts.into_iter().collect();
+        tags.sort_by(|a, b| b.1.cmp(&a.1));
+
+        // Get the tag name at the selected index
+        let tag_name = match tags.get(tag_index) {
+            Some((name, _)) => name.clone(),
+            None => {
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                    "No Tag Selected",
+                    "Please select a valid tag",
+                ))?;
+                return Ok(());
+            }
+        };
+
+        // Count affected cards and collect deck UUIDs
+        let mut affected_count = 0;
+        let mut affected_deck_uuids = Vec::new();
+
+        for (deck, cards) in &decks {
+            for card in cards {
+                if card.content.tags.contains(&tag_name) {
+                    affected_count += 1;
+                    if !affected_deck_uuids.contains(&deck.uuid) {
+                        affected_deck_uuids.push(deck.uuid);
+                    }
+                }
+            }
+        }
+
+        if affected_count == 0 {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "No Cards Found",
+                &format!("Tag '{}' is not used by any cards", tag_name),
+            ))?;
+            return Ok(());
+        }
+
+        // Delete the tag from all cards in each affected deck
+        for deck_uuid in affected_deck_uuids {
+            // Get cards for this deck
+            let cards = self.deck_manager.get_cards(&deck_uuid).await?;
+            let mut updated_cards = Vec::new();
+
+            for mut card in cards {
+                if card.content.tags.contains(&tag_name) {
+                    card.content.tags.retain(|t| t != &tag_name);
+                    card.content.modified_at = chrono::Utc::now();
+                    updated_cards.push(card);
+                }
+            }
+
+            // Update cards in deck
+            for card in updated_cards {
+                let _ = self.deck_manager.update_card(&deck_uuid, &card).await;
+            }
+        }
+
+        let state_store = self.state_store.read().await;
+        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+            "Tag Deleted",
+            &format!("Removed '{}' from {} cards", tag_name, affected_count),
+        ))?;
+
+        Ok(())
+    }
+
+    /// Clean up orphaned media files from all decks
+    pub async fn clean_orphaned_media(&mut self) -> TuiResult<()> {
+        let decks = self.deck_service.get_all_decks().await?;
+
+        if decks.is_empty() {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "No Decks",
+                "No decks found to clean media from",
+            ))?;
+            return Ok(());
+        }
+
+        let mut total_cleaned = 0;
+
+        for (deck, _cards) in &decks {
+            match self.deck_manager.cleanup_deck_media(&deck.uuid).await {
+                Ok(count) => {
+                    total_cleaned += count;
+                }
+                Err(e) => {
+                    log::warn!("Failed to clean media for deck {}: {}", deck.name, e);
+                }
+            }
+        }
+
+        let state_store = self.state_store.read().await;
+        if total_cleaned > 0 {
+            state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                "Media Cleaned",
+                &format!("Removed {} orphaned media file(s)", total_cleaned),
+            ))?;
+        } else {
+            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                "No Orphaned Media",
+                "All media files are referenced by cards",
+            ))?;
+        }
+
         Ok(())
     }
 

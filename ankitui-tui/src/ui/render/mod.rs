@@ -136,6 +136,12 @@ impl Renderer for DefaultRenderer {
             Screen::DataManage => {
                 render_data_manage(f, area, app, state);
             }
+            Screen::TagManagement => {
+                render_tag_management(f, area, app, state);
+            }
+            Screen::MediaManagement => {
+                render_media_management(f, area, app, state);
+            }
             _ => {
                 // Default to main menu
                 render_main_menu(f, area, 0);
@@ -613,6 +619,8 @@ fn render_settings_with_real_data(
         "📖 Study Preferences",
         "🎨 UI Customization",
         "💾 Data Management",
+        "🏷️ Manage Tags",
+        "🖼️ Media Management",
         "🔔 Notifications",
         "⌨️ Keyboard Shortcuts",
         "🌐 Language & Region",
@@ -1155,4 +1163,221 @@ fn render_data_manage(
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Info"));
     f.render_widget(help, chunks[2]);
+}
+
+/// Tag management screen
+fn render_tag_management(
+    f: &mut ratatui::Frame,
+    area: ratatui::layout::Rect,
+    app: &crate::app::main_app::App,
+    state: &crate::ui::state::store::AppState,
+) {
+    use ratatui::{
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Modifier, Style},
+        widgets::{Block, Borders, List, ListItem, Paragraph, Row, Table},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(8),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("🏷️ Tag Management")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Tags"));
+    f.render_widget(header, chunks[0]);
+
+    // Fetch all decks to build tag list
+    let tag_data: Vec<(String, usize, String)> = if let Ok(decks) =
+        tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks()))
+    {
+        let mut tag_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        for (_, cards) in &decks {
+            for card in cards {
+                for tag in &card.content.tags {
+                    *tag_counts.entry(tag.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+        let mut tags: Vec<_> = tag_counts.into_iter().collect();
+        tags.sort_by(|a, b| b.1.cmp(&a.1));
+        tags
+            .into_iter()
+            .map(|(name, count)| {
+                let state_str = "";
+                (name, count, state_str.to_string())
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let tag_index = state
+        .ui_state
+        .get("tag_index")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(0);
+
+    if tag_data.is_empty() {
+        let empty = Paragraph::new("No tags found.\n\nTags are extracted from cards automatically.")
+            .style(Style::default().fg(Color::Gray))
+            .block(Block::default().borders(Borders::ALL).title("Empty"));
+        f.render_widget(empty, chunks[1]);
+    } else {
+        let total_tags = tag_data.len();
+        let total_tagged: usize = tag_data.iter().map(|(_, count, _)| count).sum();
+
+        let header_row = ["Tag", "Cards", "Type"].iter().map(|h| {
+            ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        });
+
+        let rows = tag_data.iter().enumerate().map(|(i, (name, count, _))| {
+            let cells = vec![
+                ratatui::widgets::Cell::from(if i == tag_index {
+                    format!("▶ {}", name)
+                } else {
+                    name.clone()
+                }),
+                ratatui::widgets::Cell::from(count.to_string()),
+                ratatui::widgets::Cell::from(if *count > 10 { "Frequent" } else { "Normal" }),
+            ];
+            Row::new(cells).style(if i == tag_index {
+                Style::default().bg(Color::DarkGray).fg(Color::White)
+            } else {
+                Style::default()
+            })
+        });
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(50),
+                Constraint::Percentage(15),
+                Constraint::Percentage(20),
+            ],
+        )
+        .header(Row::new(header_row))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Tags ({}) • Total tagged: {}", total_tags, total_tagged)),
+        );
+        f.render_widget(table, chunks[1]);
+    }
+
+    let help = Paragraph::new("↑↓: Navigate | D: Delete tag | R: Rename | F5: Refresh | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
+}
+
+/// Media management screen
+fn render_media_management(
+    f: &mut ratatui::Frame,
+    area: ratatui::layout::Rect,
+    app: &crate::app::main_app::App,
+    state: &crate::ui::state::store::AppState,
+) {
+    use ratatui::{
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Modifier, Style},
+        widgets::{Block, Borders, List, ListItem, Paragraph},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(10),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("🖼️ Media Management")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Media"));
+    f.render_widget(header, chunks[0]);
+
+    // Calculate media statistics
+    let mut total_media = 0;
+    let mut audio_count = 0;
+    let mut image_count = 0;
+    let mut video_count = 0;
+    let mut total_size = 0;
+
+    if let Ok(decks) = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks())
+    }) {
+        for (deck, _cards) in &decks {
+            if let Ok(stats) = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(
+                    app.deck_manager().get_deck_media_stats(&deck.uuid)
+                )
+            }) {
+                total_media += stats.total_media_files;
+                audio_count += stats.audio_files;
+                image_count += stats.image_files;
+                video_count += stats.video_files;
+                total_size += stats.total_size_bytes;
+            }
+        }
+    }
+
+    let media_index = state
+        .ui_state
+        .get("media_index")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(0);
+
+    let items = vec![
+        format!("📊 Total Media Files: {}", total_media),
+        format!("🖼️ Images: {}", image_count),
+        format!("🎵 Audio: {}", audio_count),
+        format!("🎬 Videos: {}", video_count),
+        format!("💾 Total Size: {}", format_bytes(total_size)),
+        "".to_string(),
+        "Actions:".to_string(),
+        "  C: Clean up orphaned media files".to_string(),
+        "  V: Validate all media files".to_string(),
+    ];
+
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .enumerate()
+        .map(|(i, text)| {
+            let prefix = if i == media_index { "▶" } else { " " };
+            ListItem::new(format!("{} {}", prefix, text))
+        })
+        .collect();
+
+    let list = List::new(list_items)
+        .block(Block::default().borders(Borders::ALL).title("Media Statistics"));
+    f.render_widget(list, chunks[1]);
+
+    let help = Paragraph::new("↑↓: Navigate | C: Clean orphaned media | V: Validate | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
+}
+
+/// Format bytes to human readable size
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.2} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.2} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
+    }
 }

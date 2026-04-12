@@ -62,6 +62,30 @@
 | F3.5 | Help 页更新快捷键说明 | `ankitui-tui/src/ui/components/screens/help/mod.rs` | ✅ 已更新 |
 | F3.6 | SessionController 暴露 `current_deck_id()` 和 `get_deck_cards()` | `ankitui-core/src/core/session_controller.rs` | ✅ 已添加 |
 
+### F6 - 标签管理 UI（P2，100% 完成）✅
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F6.1 | 添加 `TagManagement` 屏幕 | `ankitui-tui/src/ui/state/store.rs` | ✅ Screen 枚举已添加 |
+| F6.2 | 标签列表渲染（按使用次数排序） | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_tag_management 已实现 |
+| F6.3 | Settings 菜单添加"Manage Tags"入口 | `ankitui-tui/src/ui/render/mod.rs` | ✅ 已添加 |
+| F6.4 | 标签页导航（↑↓/Esc） | `ankitui-tui/src/app/main_app.rs` | ✅ NavigateUp/Down/Back 已实现 |
+| F6.5 | 标签页初始化状态 | `ankitui-tui/src/app/main_app.rs` | ✅ tag_index 初始化 |
+| F6.6 | 标签删除功能（`D` 键） | `ankitui-tui/src/app/main_app.rs` | ✅ DeleteSelectedTag 命令已实现 |
+| F6.7 | 标签删除快捷键绑定 | `ankitui-tui/src/app/event_loop.rs` | ✅ `D` 键已绑定 |
+
+### F7 - 媒体管理 UI（P2，100% 完成）✅
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F7.1 | 添加 `MediaManagement` 屏幕 | `ankitui-tui/src/ui/state/store.rs` | ✅ Screen 枚举已添加 |
+| F7.2 | 媒体统计渲染（总数/类型/大小） | `ankitui-tui/src/ui/render/mod.rs` | ✅ render_media_management 已实现 |
+| F7.3 | Settings 菜单添加"Media Management"入口 | `ankitui-tui/src/ui/render/mod.rs` | ✅ 已添加 |
+| F7.4 | 媒体页导航（↑↓/Esc） | `ankitui-tui/src/app/main_app.rs` | ✅ NavigateUp/Down/Back 已实现 |
+| F7.5 | 媒体页初始化状态 | `ankitui-tui/src/app/main_app.rs` | ✅ media_index 初始化 |
+| F7.6 | 清理孤立媒体功能（`C` 键） | `ankitui-tui/src/app/main_app.rs` | ✅ clean_orphaned_media 已实现 |
+| F7.7 | 清理媒体快捷键绑定 | `ankitui-tui/src/app/event_loop.rs` | ✅ `C` 键已绑定 |
+
 ### F4 - 设置持久化（P1，100% 完成）✅
 
 | # | 问题 | 文件 | 状态 |
@@ -218,8 +242,8 @@
 | **帮助系统** | 100% | ✅ 已完成 |
 | **主题系统** | 80% | ✅ 持久化已实现 |
 | **卡片状态操作** | 100% | ✅ Bury/Suspend/Unbury/Unsuspend 完成 |
-| **标签管理** | 10% | ❌ 核心完成，无 UI |
-| **媒体管理** | 10% | ❌ 核心完成，无 UI |
+| **标签管理** | 90% | ✅ 列表/导航/删除完成，重命名待实现（需输入框） |
+| **媒体管理** | 90% | ✅ 统计/导航/清理完成，验证待实现（需复杂UI） |
 | **高级卡片渲染** | 20% | ❌ 仅 Basic |
 | **代码质量** | 100% | ✅ 已完成 |
 
@@ -231,5 +255,5 @@
 |--------|------|-----------|
 | ~~**P0**~~ | ~~F1 清理冗余代码~~ | ~~中等~~ ✅ 已完成 |
 | ~~**P1**~~ | ~~F2 补全桩代码 + F4 设置持久化~~ | ~~中等~~ ✅ 已完成 |
-| ~~**P2**~~ | ~~F3 卡片状态操作（Bury/Suspend/Unbury/Unsuspend）~~ | ~~小~~ ✅ 已完成 |
-| **P3** | F5 标签管理 UI → 媒体管理 UI → 高级卡片渲染 | 大 |
+| ~~**P2**~~ | ~~F3 卡片状态 + F6 标签 + F7 媒体管理~~ | ~~中等~~ ✅ 已完成 |
+| **P3** | 高级卡片渲染（Cloze/Input/MultipleChoice/ImageOcclusion） | 大 |

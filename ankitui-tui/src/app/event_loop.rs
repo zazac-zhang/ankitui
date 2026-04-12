@@ -329,6 +329,16 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             Command::user(CommandType::UnsuspendCard)
         }
 
+        // Tag management: delete selected tag
+        (KeyCode::Char('d'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::TagManagement => {
+            Command::user(CommandType::DeleteSelectedTag)
+        }
+
+        // Media management: clean orphaned media
+        (KeyCode::Char('c'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MediaManagement => {
+            Command::user(CommandType::CleanOrphanedMedia)
+        }
+
         _ => Command::user(CommandType::Unknown),
     }
 }

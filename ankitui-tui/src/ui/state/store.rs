@@ -49,6 +49,8 @@ pub enum Screen {
     StudyPrefs,
     UiSettings,
     DataManage,
+    TagManagement,
+    MediaManagement,
 }
 
 /// System message for user notifications
