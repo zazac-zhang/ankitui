@@ -7,6 +7,8 @@ pub mod study;
 pub mod stats;
 pub mod settings;
 pub mod menu;
+pub mod search;
+pub mod help;
 
 // Re-export main screen types
 pub use menu::MenuScreen;
@@ -15,3 +17,5 @@ pub use study::{StudyQuestionScreen, StudyAnswerScreen, StudyRatingScreen, Study
 pub use stats::{StatsScreen, GlobalStatsScreen, DeckStatsScreen, ProgressScreen};
 pub use settings::{SettingsScreen, StudyPrefsScreen, UiSettingsScreen, DataManageScreen};
 pub use common::{LoadingScreen, ErrorScreen, ConfirmScreen, InputScreen};
+pub use search::{SearchScreen, SearchType};
+pub use help::HelpScreen;

@@ -4,7 +4,6 @@ use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
 use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem, Row, Cell, Table}, style::{Style, Color, Modifier}};
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 /// Stats screen - main statistics hub
 pub struct StatsScreen {
@@ -24,11 +23,6 @@ pub struct DeckStatsScreen {
     state: ComponentState,
     deck_service: Option<Arc<crate::domain::DeckService>>,
     cached_rows: Option<Vec<Vec<String>>>,
-}
-
-/// Learning progress screen
-pub struct ProgressScreen {
-    state: ComponentState,
 }
 
 impl StatsScreen {
@@ -248,11 +242,69 @@ impl Component for DeckStatsScreen {
     fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
 }
 
+/// Learning progress screen with interactive stats
+pub struct ProgressScreen {
+    state: ComponentState,
+    selected_tab: usize,
+    retention_rate: f32,
+    cards_matured: usize,
+    study_streak: i32,
+    forecast_due_today: usize,
+    forecast_due_week: usize,
+    cards_studied_today: usize,
+    total_cards: usize,
+    learned_cards: usize,
+}
+
+const PROGRESS_TABS: &[&str] = &["Overview", "Retention", "Forecast"];
+
 impl ProgressScreen {
     pub fn new() -> Self {
         Self {
             state: ComponentState::new(),
+            selected_tab: 0,
+            retention_rate: 0.0,
+            cards_matured: 0,
+            study_streak: 0,
+            forecast_due_today: 0,
+            forecast_due_week: 0,
+            cards_studied_today: 0,
+            total_cards: 0,
+            learned_cards: 0,
         }
+    }
+
+    pub fn with_stats(
+        retention_rate: f32,
+        cards_matured: usize,
+        study_streak: i32,
+        forecast_due_today: usize,
+        forecast_due_week: usize,
+        cards_studied_today: usize,
+        total_cards: usize,
+        learned_cards: usize,
+    ) -> Self {
+        Self {
+            state: ComponentState::new(),
+            selected_tab: 0,
+            retention_rate,
+            cards_matured,
+            study_streak,
+            forecast_due_today,
+            forecast_due_week,
+            cards_studied_today,
+            total_cards,
+            learned_cards,
+        }
+    }
+
+    fn move_tab(&mut self, direction: i32) {
+        if direction > 0 {
+            self.selected_tab = (self.selected_tab + 1) % PROGRESS_TABS.len();
+        } else if self.selected_tab > 0 {
+            self.selected_tab -= 1;
+        }
+        self.mark_dirty();
     }
 }
 
@@ -267,29 +319,104 @@ impl Component for ProgressScreen {
             ])
             .split(area);
 
-        let header = Paragraph::new("📈 Learning Progress")
+        let tab_bar = format!("  {}  |  {}  |  {}  ",
+            if self.selected_tab == 0 { "[Overview]" } else { " Overview " },
+            if self.selected_tab == 1 { "[Retention]" } else { " Retention " },
+            if self.selected_tab == 2 { "[Forecast]" } else { " Forecast " },
+        );
+        let header = Paragraph::new(tab_bar)
             .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
-            .block(Block::default().borders(Borders::ALL).title("Progress"));
+            .block(Block::default().borders(Borders::ALL).title("📈 Learning Progress"));
         f.render_widget(header, chunks[0]);
 
-        let content = Paragraph::new(
-            "Learning progress tracking will be available here.\n\n\
-             This screen will show:\n\
-             - Retention rate over time\n\
-             - Cards matured per week\n\
-             - Forecast of upcoming reviews\n\
-             - Study streak information",
-        )
-        .style(Style::default())
-        .block(Block::default().borders(Borders::ALL).title("Coming Soon"));
-        f.render_widget(content, chunks[1]);
+        let content = match self.selected_tab {
+            0 => {
+                // Overview tab
+                let pct = if self.total_cards > 0 {
+                    (self.learned_cards as f32 / self.total_cards as f32 * 100.0).min(100.0)
+                } else { 0.0 };
+                format!(
+                    "Cards Studied Today: {}\n\
+                     Total Cards: {}\n\
+                     Learned Cards: {} ({:.0}%)\n\
+                     Study Streak: {} days\n\n\
+                     ████████████████████  {:.0}% complete",
+                    self.cards_studied_today,
+                    self.total_cards,
+                    self.learned_cards,
+                    pct,
+                    self.study_streak,
+                    pct,
+                )
+            }
+            1 => {
+                // Retention tab
+                let good_pct = self.retention_rate * 100.0;
+                let poor_pct = 100.0 - good_pct;
+                format!(
+                    "Overall Retention Rate: {:.1}%\n\n\
+                     Good retention: {:.1}%\n\
+                     Poor retention: {:.1}%\n\n\
+                     Cards matured: {}",
+                    self.retention_rate * 100.0,
+                    good_pct,
+                    poor_pct,
+                    self.cards_matured,
+                )
+            }
+            2 => {
+                // Forecast tab
+                format!(
+                    "Due Today: {}\n\
+                     Due This Week: {}\n\n\
+                     {} cards remaining this week\n\
+                     {} new cards to review",
+                    self.forecast_due_today,
+                    self.forecast_due_week,
+                    self.forecast_due_week.saturating_sub(self.forecast_due_today),
+                    self.forecast_due_week,
+                )
+            }
+            _ => String::new(),
+        };
 
-        let help = Paragraph::new("Esc: Back")
+        let content_para = Paragraph::new(content)
+            .style(Style::default())
+            .block(Block::default().borders(Borders::ALL).title(PROGRESS_TABS[self.selected_tab]));
+        f.render_widget(content_para, chunks[1]);
+
+        let help = Paragraph::new("←→: Switch tab | R: Refresh | Esc: Back")
             .style(Style::default().fg(Color::Gray))
             .block(Block::default().borders(Borders::ALL).title("Controls"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
+
+    fn handle_input(&mut self, event: crossterm::event::Event) -> TuiResult<bool> {
+        use crossterm::event::{Event, KeyCode, KeyEventKind};
+
+        match event {
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match key.code {
+                    KeyCode::Left => {
+                        self.move_tab(-1);
+                        Ok(false)
+                    }
+                    KeyCode::Right => {
+                        self.move_tab(1);
+                        Ok(false)
+                    }
+                    KeyCode::Char('r') | KeyCode::Char('R') => {
+                        self.mark_dirty();
+                        Ok(true) // Signal refresh
+                    }
+                    KeyCode::Esc => Ok(true),
+                    _ => Ok(false),
+                }
+            }
+            _ => Ok(false),
+        }
+    }
+
     fn update(&mut self) -> TuiResult<()> { Ok(()) }
     fn can_focus(&self) -> bool { true }
     fn id(&self) -> &str { "progress_screen" }
