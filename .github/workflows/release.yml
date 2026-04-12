@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 0.2.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update version in Cargo.toml
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          sed -i "s/^version = .*/version = \"$VERSION\"/" Cargo.toml
+          for crate in ankitui-core ankitui-tui ankitui; do
+            sed -i "s/^version = .*/version = \"$VERSION\"/" "$crate/Cargo.toml" 2>/dev/null || true
+          done
+
+      - name: Commit and tag
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git add .
+          git commit -m "chore: release v$VERSION"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push && git push --tags
