@@ -618,7 +618,7 @@ fn render_settings_with_real_data(
         "🌐 Language & Region",
     ];
 
-    let selected_index = state.main_menu_selected; // Reuse for settings navigation
+    let selected_index = state.settings_selected;
 
     let items: Vec<ListItem> = settings_items
         .iter()

@@ -378,6 +378,7 @@ fn handle_navigation_up(screen: crate::ui::state::Screen, _current_state: &AppSt
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::Search => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::Help => Command::user(CommandType::NavigateUp),
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateUp),
         _ => Command::user(CommandType::NavigateUp),
     }
 }
@@ -390,6 +391,7 @@ fn handle_navigation_down(screen: crate::ui::state::Screen, _current_state: &App
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::Search => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::Help => Command::user(CommandType::NavigateDown),
+        crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateDown),
         _ => Command::user(CommandType::NavigateDown),
     }
 }
@@ -460,6 +462,7 @@ fn handle_escape_contextual(screen: crate::ui::state::Screen, current_state: &Ap
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateToMainMenu),
         crate::ui::state::Screen::Help => Command::user(CommandType::NavigateToMainMenu),
         crate::ui::state::Screen::Search => Command::user(CommandType::NavigateToMainMenu),
+        crate::ui::state::Screen::MainMenu => Command::user(CommandType::Quit),
         _ => Command::user(CommandType::NavigateBack),
     }
 }

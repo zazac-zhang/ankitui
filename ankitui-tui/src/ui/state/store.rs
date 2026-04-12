@@ -28,6 +28,7 @@ pub struct AppState {
     // Menu navigation state
     pub main_menu_selected: usize,
     pub deck_list_selected: Option<usize>,
+    pub settings_selected: usize,
 
     // Cached deck count
     pub deck_count: usize,
@@ -155,6 +156,7 @@ impl Default for AppState {
             action_history: Vec::new(),
             main_menu_selected: 0,
             deck_list_selected: None,
+            settings_selected: 0,
             deck_count: 0,
         }
     }
@@ -332,6 +334,36 @@ impl StateStore {
         })
     }
 
+    /// Get settings menu selected index
+    pub fn get_settings_selected(&self) -> usize {
+        self.state.read().unwrap().settings_selected
+    }
+
+    /// Set settings menu selected index
+    pub fn set_settings_selected(&self, index: usize) -> TuiResult<()> {
+        self.update_state(|state| {
+            state.settings_selected = index;
+        })
+    }
+
+    /// Navigate settings menu up
+    pub fn navigate_settings_up(&self) -> TuiResult<()> {
+        self.update_state(|state| {
+            if state.settings_selected > 0 {
+                state.settings_selected -= 1;
+            }
+        })
+    }
+
+    /// Navigate settings menu down (6 items total)
+    pub fn navigate_settings_down(&self) -> TuiResult<()> {
+        self.update_state(|state| {
+            if state.settings_selected < 5 {
+                state.settings_selected += 1;
+            }
+        })
+    }
+
     /// Update user preferences
     pub fn update_user_preferences(&self, preferences: UserPreferences) -> TuiResult<()> {
         self.update_state(|state| {
@@ -496,6 +528,7 @@ impl AppState {
             action_history: Vec::new(),
             main_menu_selected: 0,
             deck_list_selected: None,
+            settings_selected: 0,
             deck_count: 0,
         }
     }

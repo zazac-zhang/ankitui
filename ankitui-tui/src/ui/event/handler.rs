@@ -199,6 +199,7 @@ impl EventHandler {
             Screen::CardEditor => Command::user(CommandType::CancelEdit),
             Screen::Settings => Command::user(CommandType::NavigateToMainMenu),
             Screen::Statistics => Command::user(CommandType::NavigateToMainMenu),
+            Screen::MainMenu => Command::user(CommandType::Quit),
             _ => Command::user(CommandType::NavigateBack),
         }
     }

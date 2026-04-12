@@ -204,6 +204,11 @@ impl App {
     pub async fn initialize(&mut self) -> TuiResult<()> {
         log::info!("Initializing AnkiTUI application");
 
+        // Seed sample decks if no decks exist
+        if let Err(e) = ankitui_core::core::seed::seed_sample_decks(&self.deck_manager).await {
+            log::warn!("Failed to seed sample decks: {}", e);
+        }
+
         // Load all decks using service layer
         let decks = self
             .deck_service
@@ -551,7 +556,7 @@ impl App {
             CommandType::ConfirmSetting => {
                 let index = {
                     let state_store = self.state_store.read().await;
-                    state_store.get_main_menu_selected()
+                    state_store.get_settings_selected()
                 };
                 let target = match index {
                     0 => crate::ui::state::store::Screen::StudyPrefs,
@@ -679,6 +684,10 @@ impl App {
                     crate::ui::state::store::Screen::Help => {
                         // Help screen category navigation (placeholder)
                     }
+                    crate::ui::state::store::Screen::Settings => {
+                        let state_store = self.state_store.read().await;
+                        state_store.navigate_settings_up()?;
+                    }
                     _ => {}
                 }
             }
@@ -715,6 +724,10 @@ impl App {
                     }
                     crate::ui::state::store::Screen::Help => {
                         // Help screen category navigation (placeholder)
+                    }
+                    crate::ui::state::store::Screen::Settings => {
+                        let state_store = self.state_store.read().await;
+                        state_store.navigate_settings_down()?;
                     }
                     _ => {}
                 }

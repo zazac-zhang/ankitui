@@ -97,6 +97,7 @@ pub mod deck_manager;
 pub mod incremental_learning;
 pub mod media_manager;
 pub mod scheduler;
+pub mod seed;
 pub mod session_controller;
 pub mod stats_engine;
 pub mod tag_manager;
