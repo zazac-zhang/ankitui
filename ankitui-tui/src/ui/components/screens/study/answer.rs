@@ -3,7 +3,13 @@
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
 use ankitui_core::data::models::Card;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders}, style::{Style, Color, Modifier}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 /// Study screen showing card answer
 pub struct StudyAnswerScreen {
@@ -48,8 +54,8 @@ impl Component for StudyAnswerScreen {
             .style(Style::default().add_modifier(Modifier::BOLD));
 
         // Instructions
-        let instructions = Paragraph::new("Space: Rate Card | Esc: Back to Question")
-            .style(Style::default().fg(Color::Yellow));
+        let instructions =
+            Paragraph::new("Space: Rate Card | Esc: Back to Question").style(Style::default().fg(Color::Yellow));
 
         f.render_widget(question, chunks[0]);
         f.render_widget(answer, chunks[1]);
@@ -63,7 +69,7 @@ impl Component for StudyAnswerScreen {
             Event::Key(key) if key.kind == KeyEventKind::Press => {
                 match key.code {
                     KeyCode::Char(' ') => Ok(true), // Go to rating
-                    KeyCode::Esc => Ok(true),      // Back to question
+                    KeyCode::Esc => Ok(true),       // Back to question
                     _ => Ok(false),
                 }
             }

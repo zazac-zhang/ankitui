@@ -1,7 +1,7 @@
 //! Event handling system for the TUI application
 
-pub mod handler;
 pub mod command;
+pub mod handler;
 pub mod keyboard;
 pub mod mouse;
 
@@ -20,7 +20,7 @@ pub enum Event {
 }
 
 // Re-export key types
-pub use handler::EventHandler;
 pub use command::{Command, CommandType};
-pub use keyboard::{KeyEvent, KeyAction};
-pub use mouse::{MouseEvent, MouseAction};
+pub use handler::EventHandler;
+pub use keyboard::{KeyAction, KeyEvent};
+pub use mouse::{MouseAction, MouseEvent};

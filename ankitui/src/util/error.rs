@@ -172,10 +172,7 @@ impl AnkiTuiError {
     }
 
     /// Create a configuration error with suggestion
-    pub fn config_with_suggestion<S: Into<String>, T: Into<String>>(
-        message: S,
-        suggestion: T,
-    ) -> Self {
+    pub fn config_with_suggestion<S: Into<String>, T: Into<String>>(message: S, suggestion: T) -> Self {
         Self::Config {
             message: message.into(),
             source: None,
@@ -214,10 +211,7 @@ impl AnkiTuiError {
     }
 
     /// Create a database error with operation
-    pub fn database_with_operation<S: Into<String>, T: Into<String>>(
-        message: S,
-        operation: T,
-    ) -> Self {
+    pub fn database_with_operation<S: Into<String>, T: Into<String>>(message: S, operation: T) -> Self {
         Self::Database {
             message: message.into(),
             source: None,
@@ -349,8 +343,7 @@ impl AnkiTuiError {
             | Self::Timeout { .. }
             | Self::External { .. } => true,
             Self::Filesystem {
-                suggestion: Some(s),
-                ..
+                suggestion: Some(s), ..
             } if s.contains("permission") => false,
             Self::Permission { .. } => false,
             _ => false,
@@ -470,9 +463,7 @@ pub mod formatting {
 
         match error {
             AnkiTuiError::Config {
-                message,
-                suggestion,
-                ..
+                message, suggestion, ..
             } => {
                 writeln!(output, "Configuration problem: {}", message).unwrap();
                 if let Some(s) = suggestion {
@@ -480,9 +471,7 @@ pub mod formatting {
                 }
             }
             AnkiTuiError::Data {
-                message,
-                suggestion,
-                ..
+                message, suggestion, ..
             } => {
                 writeln!(output, "Data problem: {}", message).unwrap();
                 if let Some(s) = suggestion {
@@ -490,9 +479,7 @@ pub mod formatting {
                 }
             }
             AnkiTuiError::Validation {
-                message,
-                suggestion,
-                ..
+                message, suggestion, ..
             } => {
                 writeln!(output, "Invalid input: {}", message).unwrap();
                 if let Some(s) = suggestion {
@@ -500,9 +487,7 @@ pub mod formatting {
                 }
             }
             AnkiTuiError::NotFound {
-                message,
-                suggestion,
-                ..
+                message, suggestion, ..
             } => {
                 writeln!(output, "Not found: {}", message).unwrap();
                 if let Some(s) = suggestion {
@@ -542,9 +527,7 @@ pub mod recovery {
             AnkiTuiError::Config { message, .. } if message.contains("not found") => {
                 Ok(RecoveryAction::CreateDefaultConfig)
             }
-            AnkiTuiError::Data {
-                message, file_path, ..
-            } if message.contains("corrupted") => {
+            AnkiTuiError::Data { message, file_path, .. } if message.contains("corrupted") => {
                 if let Some(path) = file_path {
                     Ok(RecoveryAction::RestoreFromBackup(path.clone()))
                 } else {
@@ -553,15 +536,9 @@ pub mod recovery {
                     ))
                 }
             }
-            AnkiTuiError::Database { message, .. } if message.contains("locked") => {
-                Ok(RecoveryAction::Retry)
-            }
-            AnkiTuiError::Permission { resource, .. } => {
-                Ok(RecoveryAction::RequestPermission(resource.clone()))
-            }
-            AnkiTuiError::NotFound { resource_type, .. } => {
-                Ok(RecoveryAction::CreateResource(resource_type.clone()))
-            }
+            AnkiTuiError::Database { message, .. } if message.contains("locked") => Ok(RecoveryAction::Retry),
+            AnkiTuiError::Permission { resource, .. } => Ok(RecoveryAction::RequestPermission(resource.clone())),
+            AnkiTuiError::NotFound { resource_type, .. } => Ok(RecoveryAction::CreateResource(resource_type.clone())),
             _ => Ok(RecoveryAction::ManualIntervention(format!(
                 "No automatic recovery available for: {}",
                 error
@@ -716,10 +693,7 @@ mod tests {
     fn test_error_recovery() {
         let err = AnkiTuiError::config("Config file not found");
         let recovery = recovery::attempt_recovery(&err).unwrap();
-        assert!(matches!(
-            recovery,
-            recovery::RecoveryAction::CreateDefaultConfig
-        ));
+        assert!(matches!(recovery, recovery::RecoveryAction::CreateDefaultConfig));
     }
 
     #[test]

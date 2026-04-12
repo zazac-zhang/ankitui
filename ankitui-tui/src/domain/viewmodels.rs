@@ -2,10 +2,10 @@
 //!
 //! Provides UI-specific state for TUI components while using core models directly
 
-use ankitui_core::data::models::{Card, Deck, CardState};
+use ankitui_core::data::models::{Card, CardState, Deck};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 
 /// Deck view model for UI display with selection state
 #[derive(Debug, Clone)]
@@ -316,4 +316,3 @@ pub struct AppStats {
     pub has_pending_error: bool,
     pub is_loading: bool,
 }
-

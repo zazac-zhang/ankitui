@@ -41,12 +41,10 @@ pub use config::Config;
 pub use constants::*;
 pub use manager::ConfigManager;
 pub use profiles::{
-    get_config_profile, get_config_profiles, minimal_profile, power_user_profile, simple_profile,
-    student_profile, ConfigProfile,
+    get_config_profile, get_config_profiles, minimal_profile, power_user_profile, simple_profile, student_profile,
+    ConfigProfile,
 };
-pub use provider::{
-    ConfigProvider, DailyLimits, DataSettings, SchedulerParams, ShortcutMap, UiSettings,
-};
+pub use provider::{ConfigProvider, DailyLimits, DataSettings, SchedulerParams, ShortcutMap, UiSettings};
 pub use validator::{validate, ConfigValidator};
 
 // Re-export sub-module types

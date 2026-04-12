@@ -3,14 +3,14 @@
 //! Provides high-level service interfaces that coordinate between Core package
 //! and TUI application layer
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use crate::utils::error::{TuiResult, TuiError};
 use crate::domain::viewmodels::StudySessionStats;
-use ankitui_core::{DeckManager, SessionController};
+use crate::utils::error::{TuiError, TuiResult};
+use ankitui_core::core::DeckStats;
 use ankitui_core::core::Rating;
 use ankitui_core::data::{Card, CardContent, Deck};
-use ankitui_core::core::DeckStats;
+use ankitui_core::{DeckManager, SessionController};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 /// Deck Service - High-level deck operations

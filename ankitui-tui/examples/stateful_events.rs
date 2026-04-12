@@ -2,15 +2,15 @@
 //!
 //! Demonstrates how the same events can have different meanings based on application state
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use ankitui_core::data::models::Rating;
 use ankitui_tui_v2::{
     ui::event::stateful_handler::StatefulEventHandler,
-    ui::state::{AppState, StateStore, Screen},
-    ui::event::{Event, Command, CommandType},
+    ui::event::{Command, CommandType, Event},
+    ui::state::{AppState, Screen, StateStore},
 };
-use ankitui_core::data::models::Rating;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent as CrosstermMouseEvent, MouseEventKind};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

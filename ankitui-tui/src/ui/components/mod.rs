@@ -4,9 +4,11 @@ pub mod base;
 pub mod layout;
 
 // Placeholder modules - to be implemented
-pub mod widgets;
 pub mod screens;
+pub mod widgets;
 
 // Re-export key component types
-pub use base::{Component, ComponentState, ComponentRegistry, InteractiveComponent, ContainerComponent, FocusableComponent};
+pub use base::{
+    Component, ComponentRegistry, ComponentState, ContainerComponent, FocusableComponent, InteractiveComponent,
+};
 pub use layout::{Container, Direction};

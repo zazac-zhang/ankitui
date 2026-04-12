@@ -183,9 +183,7 @@ impl ConfigProvider for ConfigManager {
 
     fn get_config_value(&self, key: &str) -> Option<String> {
         match key {
-            "scheduler.starting_ease_factor" => {
-                Some(self.config.scheduler.starting_ease_factor.to_string())
-            }
+            "scheduler.starting_ease_factor" => Some(self.config.scheduler.starting_ease_factor.to_string()),
             "scheduler.min_ease_factor" => Some(self.config.scheduler.min_ease_factor.to_string()),
             "scheduler.max_ease_factor" => Some(self.config.scheduler.max_ease_factor.to_string()),
             "daily.max_new_cards" => Some(self.config.daily.max_new_cards.to_string()),

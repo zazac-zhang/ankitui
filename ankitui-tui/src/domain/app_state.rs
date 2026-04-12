@@ -2,10 +2,10 @@
 //!
 //! Aligns TUI application state with core session and card states
 
-use ankitui_core::data::{Card, CardState};
 use ankitui_core::core::Rating;
+use ankitui_core::data::{Card, CardState};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 
 /// Card rating for UI events
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,7 +204,9 @@ impl AppState {
     /// Check if session is in a specific state
     pub fn is_session_in_state(&self, expected_state: &StudyState) -> bool {
         match self {
-            AppState::StudySession(current_state) => std::mem::discriminant(current_state) == std::mem::discriminant(expected_state),
+            AppState::StudySession(current_state) => {
+                std::mem::discriminant(current_state) == std::mem::discriminant(expected_state)
+            }
             _ => false,
         }
     }
@@ -224,23 +226,17 @@ impl AppState {
                 _ => None,
             },
 
-            AppState::StudySession(study_state) => {
-                match study_state {
+            AppState::StudySession(study_state) => match study_state {
+                StudyState::NotStarted { deck_id } => Some(*deck_id),
+                StudyState::Finished { .. } => None,
+                StudyState::InProgress { current_card, .. } => current_card.as_ref().map(|card| card.content.id),
+                StudyState::Paused { resume_state, .. } => match resume_state.as_ref() {
                     StudyState::NotStarted { deck_id } => Some(*deck_id),
-                    StudyState::Finished { .. } => None,
-                    StudyState::InProgress { current_card, .. }
-                        => current_card.as_ref().map(|card| card.content.id),
-                    StudyState::Paused { resume_state, .. } => {
-                        match resume_state.as_ref() {
-                            StudyState::NotStarted { deck_id } => Some(*deck_id),
-                            StudyState::InProgress { current_card, .. }
-                                => current_card.as_ref().map(|card| card.content.id),
-                            _ => None,
-                        }
-                    }
+                    StudyState::InProgress { current_card, .. } => current_card.as_ref().map(|card| card.content.id),
                     _ => None,
-                }
-            }
+                },
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -274,7 +270,10 @@ impl StudyState {
                 Some((chrono::Utc::now() - *card_start_time).num_milliseconds())
             }
             StudyState::Rating { response_time, .. } => Some(*response_time),
-            StudyState::Paused { pause_time, resume_state } => {
+            StudyState::Paused {
+                pause_time,
+                resume_state,
+            } => {
                 // Account for pause time in response calculation
                 let base_time = resume_state.get_response_time_ms()?;
                 let pause_duration = (chrono::Utc::now() - *pause_time).num_milliseconds();

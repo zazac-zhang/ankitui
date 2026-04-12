@@ -1,6 +1,6 @@
 //! Theme system for the TUI application
 
-use ratatui::style::{Color, Style, Modifier};
+use ratatui::style::{Color, Modifier, Style};
 
 /// Available theme types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

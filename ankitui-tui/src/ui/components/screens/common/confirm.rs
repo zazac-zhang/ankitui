@@ -2,7 +2,13 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders}, style::{Style, Color}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Style},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 /// Confirmation dialog screen
 pub struct ConfirmScreen {
@@ -61,8 +67,7 @@ impl Component for ConfirmScreen {
             if !self.selection { "✓" } else { " " }
         );
 
-        let paragraph = Paragraph::new(text)
-            .block(Block::default().borders(Borders::ALL).title(self.title.as_str()));
+        let paragraph = Paragraph::new(text).block(Block::default().borders(Borders::ALL).title(self.title.as_str()));
 
         f.render_widget(paragraph, area);
     }

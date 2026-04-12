@@ -115,9 +115,7 @@ impl CardStateManager {
 
         Ok(cards
             .iter()
-            .filter(|card| {
-                !buried_set.contains(&card.content.id) && !suspended_set.contains(&card.content.id)
-            })
+            .filter(|card| !buried_set.contains(&card.content.id) && !suspended_set.contains(&card.content.id))
             .collect())
     }
 

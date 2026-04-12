@@ -3,7 +3,7 @@
 > 基于代码深度分析，按优先级排序
 >
 > **最后更新**: 2026-04-12
-> **整体进度**: P0 F1-F4 全部完成，P1 F5-F7 全部完成，F8(主题)已移出，F10(帮助)已接入导航，Settings子屏幕+搜索输入已接入
+> **整体进度**: 核心功能全部完成，F9批量操作和CardEditor（终端不适合编辑）暂不实现
 
 ---
 
@@ -135,9 +135,23 @@
 
 | # | 问题 | 文件 | 状态 |
 |---|------|------|------|
-| F12.1 | 字符输入处理 | `ankitui-tui/src/app/event_loop.rs` | ✅ Search 屏幕捕获字符 |
-| F12.2 | Tab 切换搜索类型 | `ankitui-tui/src/app/event_loop.rs` | ✅ ToggleCardSide |
-| F12.3 | 搜索状态初始化 | `ankitui-tui/src/app/controller.rs` | ✅ update_state_for_screen |
+| F12.1 | 字符输入累积 | `ankitui-tui/src/app/main_app.rs` | ✅ SearchDecks/Backspace 处理 |
+| F12.2 | Tab 切换搜索类型 | `ankitui-tui/src/app/main_app.rs` | ✅ ToggleCardSide |
+| F12.3 | 搜索结果显示 | `ankitui-tui/src/ui/render/mod.rs` | ✅ 实时过滤牌组/卡片 |
+| F12.4 | Backspace 删除 | `ankitui-tui/src/app/main_app.rs` | ✅ SearchBackspace 命令 |
+
+### 6. 数据管理操作反馈 (100% 完成) ✅
+
+| # | 问题 | 文件 | 状态 |
+|---|------|------|------|
+| F13.1 | Enter 执行操作 | `ankitui-tui/src/app/main_app.rs` | ✅ Confirm 处理 DataManage |
+| F13.2 | 操作结果反馈 | `ankitui-tui/src/app/main_app.rs` | ✅ SystemMessage 提示 |
+| F13.3 | UiSettings Enter 切换 | `ankitui-tui/src/app/main_app.rs` | ✅ 布尔值切换 |
+
+### 7. 卡片编辑器 (不实现)
+
+> 终端环境不适合实现复杂的文本编辑功能（光标移动、插入/删除、多行输入等）
+> 替代方案：通过配置文件或 CLI 工具管理卡片
 
 ---
 
@@ -145,16 +159,17 @@
 
 | 功能模块 | 完成度 | 优先级 |
 |---------|--------|--------|
-| **学习流程** | 90% | ✅ 已完成 |
+| **学习流程** | 100% | ✅ 已完成 |
 | **牌组管理** | 100% | ✅ 已完成 |
 | **统计分析** | 100% | ✅ 已完成 |
 | **搜索过滤** | 100% | ✅ 已完成 |
 | **设置管理** | 100% | ✅ 已完成 |
-| **导入导出** | 70% | F1 (P0) |
-| **媒体管理** | 50% | F3 (P2) |
-| **导航系统** | 95% | ✅ 已完成 |
+| **数据管理** | 100% | ✅ 已完成 |
+| **导航系统** | 100% | ✅ 已完成 |
+| **帮助系统** | 100% | ✅ 已完成 |
 | **主题系统** | 60% | 已移出TODO |
-| **帮助系统** | 100% | ✅ 已接入导航 |
+| **卡片编辑** | - | 不实现（终端限制） |
+| **批量操作** | 10% | F9 暂不实现 |
 
 ---
 

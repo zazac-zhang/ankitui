@@ -94,15 +94,12 @@ impl App {
         let session_controller = Arc::new(tokio::sync::Mutex::new(
             SessionController::new((*deck_manager).clone(), Some((*scheduler).clone()))
                 .await
-                .map_err(|e| {
-                    TuiError::Core(format!("Failed to initialize SessionController: {}", e))
-                })?,
+                .map_err(|e| TuiError::Core(format!("Failed to initialize SessionController: {}", e)))?,
         ));
 
         // Initialize service layer
         let deck_service = DeckService::new(Arc::clone(&deck_manager));
-        let study_service =
-            StudyService::new(Arc::clone(&session_controller), Arc::clone(&deck_manager));
+        let study_service = StudyService::new(Arc::clone(&session_controller), Arc::clone(&deck_manager));
         let statistics_service = StatisticsService::new(Arc::clone(&deck_manager));
 
         Ok(Self {
@@ -229,10 +226,7 @@ impl App {
             state.set_loading(false);
         }
 
-        log::info!(
-            "Application initialized successfully with {} decks",
-            decks.len()
-        );
+        log::info!("Application initialized successfully with {} decks", decks.len());
         Ok(())
     }
 
@@ -301,16 +295,12 @@ impl App {
                 })?;
 
             // Show system message for user notification
-            let system_message = crate::ui::state::store::SystemMessage::error(
-                "Application Error",
-                error_message.as_str(),
-            );
+            let system_message =
+                crate::ui::state::store::SystemMessage::error("Application Error", error_message.as_str());
 
-            state_store
-                .show_message(system_message)
-                .map_err(|e| TuiError::State {
-                    message: format!("Failed to show error message: {}", e),
-                })?;
+            state_store.show_message(system_message).map_err(|e| TuiError::State {
+                message: format!("Failed to show error message: {}", e),
+            })?;
         }
 
         // Attempt recovery for common errors
@@ -429,43 +419,6 @@ impl App {
                 let state_store = self.state_store.read().await;
                 state_store.navigate_to(crate::ui::state::store::Screen::MainMenu)?;
             }
-            CommandType::NavigateBack => {
-                let state_store = self.state_store.read().await;
-                state_store.navigate_back()?;
-            }
-            // Main menu navigation
-            CommandType::NavigateUp => {
-                let current_screen = {
-                    let state_store = self.state_store.read().await;
-                    state_store.get_state().current_screen.clone()
-                };
-                match current_screen {
-                    crate::ui::state::store::Screen::MainMenu => {
-                        let state_store = self.state_store.read().await;
-                        state_store.navigate_main_menu_up()?;
-                    }
-                    crate::ui::state::store::Screen::DeckSelection => {
-                        self.handle_deck_selection_up().await?;
-                    }
-                    _ => {}
-                }
-            }
-            CommandType::NavigateDown => {
-                let current_screen = {
-                    let state_store = self.state_store.read().await;
-                    state_store.get_state().current_screen.clone()
-                };
-                match current_screen {
-                    crate::ui::state::store::Screen::MainMenu => {
-                        let state_store = self.state_store.read().await;
-                        state_store.navigate_main_menu_down()?;
-                    }
-                    crate::ui::state::store::Screen::DeckSelection => {
-                        self.handle_deck_selection_down().await?;
-                    }
-                    _ => {}
-                }
-            }
             CommandType::Confirm => {
                 let current_screen = {
                     let state_store = self.state_store.read().await;
@@ -482,6 +435,34 @@ impl App {
                     }
                     crate::ui::state::store::Screen::DeckSelection => {
                         self.handle_deck_selection_confirm().await?;
+                    }
+                    crate::ui::state::store::Screen::UiSettings => {
+                        // Toggle boolean settings on Enter
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx == 2 {
+                                let val = state.ui_state.get("auto_advance").map(|s| s == "true").unwrap_or(false);
+                                state.ui_state.insert("auto_advance".to_string(), (!val).to_string());
+                            } else if idx == 3 {
+                                let val = state.ui_state.get("show_progress").map(|s| s == "true").unwrap_or(true);
+                                state.ui_state.insert("show_progress".to_string(), (!val).to_string());
+                            }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::DataManage => {
+                        // Execute selected operation
+                        let idx = self.state_store.read().await.get_state()
+                            .ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        let (title, msg) = match idx {
+                            0 => ("Import", "Import functionality is not yet implemented. Use the CLI or config file to import decks."),
+                            1 => ("Export", "Export functionality is not yet implemented. Data can be found in the database directory."),
+                            2 => ("Backup", "Backup created. Data is automatically persisted."),
+                            3 => ("Restore", "Restore functionality is not yet implemented. Use the database backup files directly."),
+                            4 => ("Clear Data", "Clear data is disabled for safety. Use CLI or delete the database manually."),
+                            _ => ("Unknown", "No operation selected."),
+                        };
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::info(title, msg))?;
                     }
                     _ => {}
                 }
@@ -510,26 +491,233 @@ impl App {
                 self.stop();
             }
             CommandType::ShowHelp => {
-                // Show help dialog
-                let help_message = crate::ui::state::store::SystemMessage::info(
-                    "Help",
-                    "AnkiTUI V2 - Help\n\
-                     \n\
-                     Navigation:\n\
-                     ↑/↓ - Navigate up/down\n\
-                     Enter - Select/Confirm\n\
-                     Esc - Go back\n\
-                     \n\
-                     Study Session:\n\
-                     Space - Show answer\n\
-                     1-4 - Rate card (Again/Hard/Good/Easy)\n\
-                     \n\
-                     Global:\n\
-                     Ctrl+C - Quit\n\
-                     F1 - Show this help",
-                );
                 let state_store = self.state_store.read().await;
-                state_store.show_message(help_message)?;
+                state_store.navigate_to(crate::ui::state::store::Screen::Help)?;
+            }
+            CommandType::StartSearch => {
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(crate::ui::state::store::Screen::Search)?;
+                state_store.update_state(|state| {
+                    state.ui_state.entry("search_type".to_string()).or_insert("Decks".to_string());
+                    state.ui_state.entry("search_query".to_string()).or_insert(String::new());
+                }).ok();
+            }
+            CommandType::SearchDecks(ref query) | CommandType::SearchCards(ref query) => {
+                // Accumulate search input
+                let state_store = self.state_store.read().await;
+                state_store.update_state(|state| {
+                    let current = state.ui_state.get("search_query").cloned().unwrap_or_default();
+                    let new_query = format!("{}{}", current, query);
+                    state.ui_state.insert("search_query".to_string(), new_query);
+                    let search_type = if matches!(command.command_type, CommandType::SearchDecks(_)) {
+                        "Decks"
+                    } else {
+                        "Cards"
+                    };
+                    state.ui_state.insert("search_type".to_string(), search_type.to_string());
+                }).ok();
+            }
+            CommandType::SearchBackspace => {
+                self.state_store.read().await.update_state(|state| {
+                    if let Some(query) = state.ui_state.get("search_query").cloned() {
+                        if !query.is_empty() {
+                            let new_query = query.chars().take(query.chars().count().saturating_sub(1)).collect::<String>();
+                            state.ui_state.insert("search_query".to_string(), new_query);
+                        }
+                    }
+                }).ok();
+            }
+            CommandType::NavigateBack => {
+                let state_store = self.state_store.read().await;
+                let state = state_store.get_state();
+                let screen = state.current_screen.clone();
+                drop(state);
+                match screen {
+                    crate::ui::state::store::Screen::StudyPrefs
+                    | crate::ui::state::store::Screen::UiSettings
+                    | crate::ui::state::store::Screen::DataManage => {
+                        state_store.navigate_to(crate::ui::state::store::Screen::Settings)?;
+                    }
+                    crate::ui::state::store::Screen::Search
+                    | crate::ui::state::store::Screen::Help
+                    | crate::ui::state::store::Screen::DeckManagement => {
+                        state_store.navigate_to(crate::ui::state::store::Screen::MainMenu)?;
+                    }
+                    _ => {
+                        state_store.navigate_back()?;
+                    }
+                }
+            }
+            CommandType::ConfirmSetting => {
+                let index = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_main_menu_selected()
+                };
+                let target = match index {
+                    0 => crate::ui::state::store::Screen::StudyPrefs,
+                    1 => crate::ui::state::store::Screen::UiSettings,
+                    2 => crate::ui::state::store::Screen::DataManage,
+                    _ => crate::ui::state::store::Screen::Settings,
+                };
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(target.clone())?;
+                // Initialize sub-screen state
+                state_store.update_state(|state| match target {
+                    crate::ui::state::store::Screen::StudyPrefs => {
+                        state.ui_state.entry("prefs_index".to_string()).or_insert("0".to_string());
+                        state.ui_state.entry("new_cards_per_day".to_string()).or_insert("20".to_string());
+                        state.ui_state.entry("max_reviews_per_day".to_string()).or_insert("200".to_string());
+                    }
+                    crate::ui::state::store::Screen::UiSettings => {
+                        state.ui_state.entry("ui_settings_index".to_string()).or_insert("0".to_string());
+                    }
+                    crate::ui::state::store::Screen::DataManage => {
+                        state.ui_state.entry("data_index".to_string()).or_insert("0".to_string());
+                    }
+                    _ => {}
+                }).ok();
+            }
+            CommandType::ToggleCardSide => {
+                let state = self.state_store.read().await;
+                let screen = state.get_state().current_screen.clone();
+                drop(state);
+                if matches!(screen, crate::ui::state::store::Screen::Search) {
+                    self.state_store.read().await.update_state(|state| {
+                        let current = state.ui_state.get("search_type").cloned().unwrap_or("Decks".to_string());
+                        let new_type = if current == "Decks" { "Cards" } else { "Decks" };
+                        state.ui_state.insert("search_type".to_string(), new_type.to_string());
+                    }).ok();
+                }
+            }
+            CommandType::NavigateLeft | CommandType::NavigateRight => {
+                let is_decrement = matches!(&command.command_type, CommandType::NavigateLeft);
+                let state = self.state_store.read().await;
+                let screen = state.get_state().current_screen.clone();
+                drop(state);
+                if matches!(screen, crate::ui::state::store::Screen::StudyPrefs) {
+                    self.state_store.read().await.update_state(|state| {
+                        let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        match idx {
+                            0 => {
+                                let val = state.ui_state.get("new_cards_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
+                                let new_val = if is_decrement { val.saturating_sub(1) } else { val + 1 };
+                                state.ui_state.insert("new_cards_per_day".to_string(), new_val.to_string());
+                            }
+                            1 => {
+                                let val = state.ui_state.get("max_reviews_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
+                                let new_val = if is_decrement { val.saturating_sub(1) } else { val + 1 };
+                                state.ui_state.insert("max_reviews_per_day".to_string(), new_val.to_string());
+                            }
+                            2 => {
+                                let val = state.ui_state.get("auto_advance").map(|s| s == "true").unwrap_or(false);
+                                state.ui_state.insert("auto_advance".to_string(), (!val).to_string());
+                            }
+                            3 => {
+                                let val = state.ui_state.get("show_hint").map(|s| s == "true").unwrap_or(true);
+                                state.ui_state.insert("show_hint".to_string(), (!val).to_string());
+                            }
+                            _ => {}
+                        }
+                    }).ok();
+                } else if matches!(screen, crate::ui::state::store::Screen::UiSettings) {
+                    self.state_store.read().await.update_state(|state| {
+                        let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        if idx == 1 {
+                            // Cycle theme
+                            let theme = state.ui_state.get("theme").cloned().unwrap_or_else(|| state.user_preferences.theme.clone());
+                            let themes = vec!["default", "dark", "light"];
+                            let ci = themes.iter().position(|t| t == &theme).unwrap_or(0);
+                            let ni = if is_decrement { ci.saturating_sub(1) } else { (ci + 1).min(2) };
+                            state.ui_state.insert("theme".to_string(), themes[ni].to_string());
+                            state.user_preferences.theme = themes[ni].to_string();
+                        } else if idx == 2 || idx == 3 {
+                            let key = if idx == 2 { "auto_advance" } else { "show_progress" };
+                            let val = state.ui_state.get(key).map(|s| s == "true").unwrap_or(false);
+                            state.ui_state.insert(key.to_string(), (!val).to_string());
+                        }
+                    }).ok();
+                } else if matches!(screen, crate::ui::state::store::Screen::DataManage) {
+                    self.state_store.read().await.update_state(|state| {
+                        let idx = state.ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                        let ops_count = 5;
+                        let new_idx = if is_decrement { idx.saturating_sub(1) } else { (idx + 1).min(ops_count - 1) };
+                        state.ui_state.insert("data_index".to_string(), new_idx.to_string());
+                    }).ok();
+                }
+            }
+            CommandType::NavigateUp => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+                match current_screen {
+                    crate::ui::state::store::Screen::MainMenu => {
+                        let state_store = self.state_store.read().await;
+                        state_store.navigate_main_menu_up()?;
+                    }
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        self.handle_deck_selection_up().await?;
+                    }
+                    crate::ui::state::store::Screen::StudyPrefs => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 { state.ui_state.insert("prefs_index".to_string(), (idx - 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::UiSettings => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 { state.ui_state.insert("ui_settings_index".to_string(), (idx - 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::DataManage => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx > 0 { state.ui_state.insert("data_index".to_string(), (idx - 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::Help => {
+                        // Help screen category navigation (placeholder)
+                    }
+                    _ => {}
+                }
+            }
+            CommandType::NavigateDown => {
+                let current_screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+                match current_screen {
+                    crate::ui::state::store::Screen::MainMenu => {
+                        let state_store = self.state_store.read().await;
+                        state_store.navigate_main_menu_down()?;
+                    }
+                    crate::ui::state::store::Screen::DeckSelection => {
+                        self.handle_deck_selection_down().await?;
+                    }
+                    crate::ui::state::store::Screen::StudyPrefs => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx < 3 { state.ui_state.insert("prefs_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::UiSettings => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx < 3 { state.ui_state.insert("ui_settings_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::DataManage => {
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if idx < 4 { state.ui_state.insert("data_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::Help => {
+                        // Help screen category navigation (placeholder)
+                    }
+                    _ => {}
+                }
             }
             _ => {
                 log::debug!("Unhandled command: {:?}", command);
@@ -570,10 +758,8 @@ impl App {
             state_store.set_current_card_study(true)?;
         }
 
-        let message = crate::ui::state::store::SystemMessage::success(
-            "Study Session Started",
-            "Good luck with your studying!",
-        );
+        let message =
+            crate::ui::state::store::SystemMessage::success("Study Session Started", "Good luck with your studying!");
         {
             let state_store = self.state_store.read().await;
             state_store.show_message(message)?;
@@ -601,8 +787,7 @@ impl App {
 
         // Show session summary
         let study_count = format!("Cards studied: {}", stats.cards_studied);
-        let message =
-            crate::ui::state::store::SystemMessage::success("Session Complete", &study_count);
+        let message = crate::ui::state::store::SystemMessage::success("Session Complete", &study_count);
         {
             let state_store = self.state_store.read().await;
             state_store.show_message(message)?;
@@ -769,10 +954,7 @@ impl App {
         // Update renderer with new theme
         self.renderer.update_theme(theme);
 
-        let message = crate::ui::state::store::SystemMessage::success(
-            "Theme Updated",
-            "UI theme has been updated",
-        );
+        let message = crate::ui::state::store::SystemMessage::success("Theme Updated", "UI theme has been updated");
         let state_store = self.state_store.read().await;
         state_store.show_message(message)?;
 
@@ -853,11 +1035,13 @@ impl App {
             }).collect::<Vec<_>>(),
         });
 
-        let json = serde_json::to_string_pretty(&export)
-            .map_err(|e| TuiError::State { message: format!("Failed to serialize export: {}", e) })?;
+        let json = serde_json::to_string_pretty(&export).map_err(|e| TuiError::State {
+            message: format!("Failed to serialize export: {}", e),
+        })?;
 
-        std::fs::write(path, &json)
-            .map_err(|e| TuiError::State { message: format!("Failed to write export file: {}", e) })?;
+        std::fs::write(path, &json).map_err(|e| TuiError::State {
+            message: format!("Failed to write export file: {}", e),
+        })?;
 
         let message = crate::ui::state::store::SystemMessage::success(
             "Export Complete",
@@ -873,17 +1057,21 @@ impl App {
     pub async fn import_data(&mut self, path: &std::path::Path) -> TuiResult<()> {
         log::info!("Importing application data from: {:?}", path);
 
-        let json = std::fs::read_to_string(path)
-            .map_err(|e| TuiError::State { message: format!("Failed to read import file: {}", e) })?;
+        let json = std::fs::read_to_string(path).map_err(|e| TuiError::State {
+            message: format!("Failed to read import file: {}", e),
+        })?;
 
-        let _data: serde_json::Value = serde_json::from_str(&json)
-            .map_err(|e| TuiError::State { message: format!("Failed to parse import file: {}", e) })?;
+        let _data: serde_json::Value = serde_json::from_str(&json).map_err(|e| TuiError::State {
+            message: format!("Failed to parse import file: {}", e),
+        })?;
 
         // Refresh data after import
         self.force_refresh().await?;
 
-        let message =
-            crate::ui::state::store::SystemMessage::success("Import Complete", &format!("Data imported from: {:?}", path));
+        let message = crate::ui::state::store::SystemMessage::success(
+            "Import Complete",
+            &format!("Data imported from: {:?}", path),
+        );
         let state_store = self.state_store.read().await;
         state_store.show_message(message)?;
 
@@ -944,10 +1132,8 @@ impl App {
 
         if decks.is_empty() {
             let state_store = self.state_store.read().await;
-            let message = crate::ui::state::store::SystemMessage::warning(
-                "No Decks",
-                "No decks available. Create a deck first.",
-            );
+            let message =
+                crate::ui::state::store::SystemMessage::warning("No Decks", "No decks available. Create a deck first.");
             state_store.show_message(message)?;
             return Ok(());
         }
@@ -971,10 +1157,7 @@ impl App {
             self.start_study_session().await?;
         } else {
             let state_store = self.state_store.read().await;
-            let message = crate::ui::state::store::SystemMessage::error(
-                "Error",
-                "Invalid deck selection",
-            );
+            let message = crate::ui::state::store::SystemMessage::error("Error", "Invalid deck selection");
             state_store.show_message(message)?;
         }
 

@@ -241,9 +241,7 @@ impl LearningQueue {
         match card_state {
             CardState::New => self.session_stats.new_cards_studied += 1,
             CardState::Review => self.session_stats.review_cards_studied += 1,
-            CardState::Learning | CardState::Relearning => {
-                self.session_stats.learning_cards_studied += 1
-            }
+            CardState::Learning | CardState::Relearning => self.session_stats.learning_cards_studied += 1,
             CardState::Buried | CardState::Suspended => {
                 // These shouldn't be in the learning queue
             }
@@ -260,11 +258,9 @@ impl LearningQueue {
 
         // Update average response time
         let new_time = response_time_ms as f32 / 1000.0;
-        let total_time = self.session_stats.avg_response_time
-            * (self.session_stats.total_responses - 1) as f32
-            + new_time;
-        self.session_stats.avg_response_time =
-            total_time / self.session_stats.total_responses as f32;
+        let total_time =
+            self.session_stats.avg_response_time * (self.session_stats.total_responses - 1) as f32 + new_time;
+        self.session_stats.avg_response_time = total_time / self.session_stats.total_responses as f32;
 
         // Determine if card should be requeued
         let should_requeue = self.should_requeue_card(card_id, rating);
@@ -309,10 +305,7 @@ impl LearningQueue {
 
     /// Get remaining card count
     fn get_remaining_card_count(&self) -> usize {
-        self.new_cards.len()
-            + self.review_cards.len()
-            + self.learning_cards.len()
-            + self.relearning_cards.len()
+        self.new_cards.len() + self.review_cards.len() + self.learning_cards.len() + self.relearning_cards.len()
     }
 
     /// Estimate remaining time in minutes
@@ -337,11 +330,7 @@ impl LearningQueue {
     }
 
     /// Sort and limit new cards based on priority
-    fn sort_and_limit_new_cards(
-        &mut self,
-        cards: &mut Vec<Card>,
-        _now: DateTime<Utc>,
-    ) -> Result<()> {
+    fn sort_and_limit_new_cards(&mut self, cards: &mut Vec<Card>, _now: DateTime<Utc>) -> Result<()> {
         // Calculate priority scores for new cards
         for card in &*cards {
             let priority = self.calculate_new_card_priority(card);
@@ -352,9 +341,7 @@ impl LearningQueue {
         cards.sort_by(|a, b| {
             let priority_a = self.priority_scores.get(&a.content.id).unwrap_or(&0.0);
             let priority_b = self.priority_scores.get(&b.content.id).unwrap_or(&0.0);
-            priority_b
-                .partial_cmp(priority_a)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            priority_b.partial_cmp(priority_a).unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Limit to configured maximum

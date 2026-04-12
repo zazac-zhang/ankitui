@@ -1342,10 +1342,7 @@ impl Default for NotificationPriorities {
         Self {
             high: vec!["study_reminder".to_string(), "goal_achievement".to_string()],
             medium: vec!["daily_summary".to_string(), "weekly_report".to_string()],
-            low: vec![
-                "motivational_message".to_string(),
-                "tip_of_the_day".to_string(),
-            ],
+            low: vec!["motivational_message".to_string(), "tip_of_the_day".to_string()],
             escalation_rules: Vec::new(),
         }
     }

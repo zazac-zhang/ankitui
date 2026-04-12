@@ -4,9 +4,7 @@
 //! statistics calculation, and integration with data layer and scheduler.
 
 use crate::core::scheduler::{Rating, Scheduler};
-use crate::data::models::{
-    Card, CardContent, CardState, Deck, MediaRef, MediaType, SchedulerConfig,
-};
+use crate::data::models::{Card, CardContent, CardState, Deck, MediaRef, MediaType, SchedulerConfig};
 use crate::data::SyncAdapter;
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
@@ -330,8 +328,7 @@ impl DeckManager {
                 .await
                 .context("Failed to load deck for export")?;
 
-            let _card_contents: Vec<CardContent> =
-                cards.iter().map(|c| c.content.clone()).collect();
+            let _card_contents: Vec<CardContent> = cards.iter().map(|c| c.content.clone()).collect();
 
             // Use the content store's export functionality
             // Note: This would require implementing export_deck in ContentStore
@@ -376,11 +373,7 @@ impl DeckManager {
     }
 
     /// Update deck configuration
-    pub async fn update_deck_config(
-        &self,
-        deck_uuid: &Uuid,
-        config: SchedulerConfig,
-    ) -> Result<()> {
+    pub async fn update_deck_config(&self, deck_uuid: &Uuid, config: SchedulerConfig) -> Result<()> {
         self.update_deck(
             deck_uuid,
             DeckUpdate {
@@ -473,8 +466,7 @@ impl DeckManager {
         self.remove_card_media(deck_uuid, card_id).await?;
 
         // Add new media
-        self.add_card_media(deck_uuid, card_id, media_path, media_type)
-            .await
+        self.add_card_media(deck_uuid, card_id, media_path, media_type).await
     }
 
     /// Get a specific card from a deck
@@ -505,10 +497,7 @@ impl DeckManager {
     /// Get cards with media
     pub async fn get_cards_with_media(&self, deck_uuid: &Uuid) -> Result<Vec<Card>> {
         let cards = self.get_all_cards(deck_uuid).await?;
-        Ok(cards
-            .into_iter()
-            .filter(|card| card.content.media.is_some())
-            .collect())
+        Ok(cards.into_iter().filter(|card| card.content.media.is_some()).collect())
     }
 
     /// Get all media files referenced by cards in a deck
@@ -535,9 +524,7 @@ impl DeckManager {
         let media_manager = super::MediaManager::new(media_dir);
 
         // Clean up orphaned files
-        media_manager
-            .cleanup_orphaned_media(&referenced_files)
-            .await
+        media_manager.cleanup_orphaned_media(&referenced_files).await
     }
 
     /// Get the total number of decks
@@ -683,4 +670,3 @@ pub struct DeckMediaStats {
     pub total_size_bytes: u64,
     pub average_size_bytes: u64,
 }
-

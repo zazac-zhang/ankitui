@@ -124,7 +124,7 @@ pub struct EnhancedMediaRef {
 pub struct MediaMetadata {
     pub file_size: u64,
     pub mime_type: Option<String>,
-    pub duration_seconds: Option<f64>, // For audio/video
+    pub duration_seconds: Option<f64>,  // For audio/video
     pub dimensions: Option<(u32, u32)>, // For images (width, height)
     pub checksum: Option<String>,
     pub filename: Option<String>,
@@ -296,7 +296,6 @@ pub enum TagColor {
     Custom(String),
 }
 
-
 /// Tag priority for sorting
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub enum TagPriority {
@@ -394,7 +393,10 @@ impl ExtendedCardContent {
         let mut custom = HashMap::new();
         custom.insert("question".to_string(), toml::Value::String(question));
         custom.insert("answer".to_string(), toml::Value::String(answer));
-        custom.insert("input_data".to_string(), toml::Value::String(serde_json::to_string(&input_data).unwrap()));
+        custom.insert(
+            "input_data".to_string(),
+            toml::Value::String(serde_json::to_string(&input_data).unwrap()),
+        );
 
         Self {
             id: Uuid::new_v4(),
@@ -407,7 +409,12 @@ impl ExtendedCardContent {
         }
     }
 
-    pub fn multiple_choice(question: String, options: Vec<String>, correct_answer: usize, explanation: Option<String>) -> Self {
+    pub fn multiple_choice(
+        question: String,
+        options: Vec<String>,
+        correct_answer: usize,
+        explanation: Option<String>,
+    ) -> Self {
         let now = Utc::now();
         let mc_data = MultipleChoiceData {
             question: question.clone(),
@@ -418,7 +425,10 @@ impl ExtendedCardContent {
 
         let mut custom = HashMap::new();
         custom.insert("question".to_string(), toml::Value::String(question));
-        custom.insert("mc_data".to_string(), toml::Value::String(serde_json::to_string(&mc_data).unwrap()));
+        custom.insert(
+            "mc_data".to_string(),
+            toml::Value::String(serde_json::to_string(&mc_data).unwrap()),
+        );
 
         Self {
             id: Uuid::new_v4(),
@@ -432,7 +442,8 @@ impl ExtendedCardContent {
     }
 
     pub fn front(&self) -> String {
-        self.custom.get("front")
+        self.custom
+            .get("front")
             .or_else(|| self.custom.get("question"))
             .and_then(|v| v.as_str())
             .unwrap_or("")
@@ -552,9 +563,10 @@ impl ImportDeck {
     /// Convert ImportCardContent to internal CardContent models
     pub fn to_internal_cards(&self) -> Vec<CardContent> {
         let now = Utc::now();
-        self.cards.iter().map(|import_card| {
-            import_card.to_internal_card_content()
-        }).collect()
+        self.cards
+            .iter()
+            .map(|import_card| import_card.to_internal_card_content())
+            .collect()
     }
 }
 

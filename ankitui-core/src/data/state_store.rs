@@ -22,9 +22,8 @@ impl StateStore {
 
         // Ensure parent directory exists
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create database directory: {}", parent.display())
-            })?;
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create database directory: {}", parent.display()))?;
         }
 
         // Connect to database with optimized connection pool
@@ -100,19 +99,15 @@ impl StateStore {
             .context("Failed to create state index")?;
 
         // Additional performance indexes
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_card_states_updated_at ON card_states(updated_at)",
-        )
-        .execute(pool)
-        .await
-        .context("Failed to create updated_at index")?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_card_states_updated_at ON card_states(updated_at)")
+            .execute(pool)
+            .await
+            .context("Failed to create updated_at index")?;
 
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_card_states_due_state ON card_states(due, state)",
-        )
-        .execute(pool)
-        .await
-        .context("Failed to create composite due_state index")?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_card_states_due_state ON card_states(due, state)")
+            .execute(pool)
+            .await
+            .context("Failed to create composite due_state index")?;
 
         // Optimize SQLite settings - use DELETE mode to avoid temp file issues
         sqlx::query("PRAGMA journal_mode=DELETE")
@@ -195,10 +190,7 @@ impl StateStore {
             q = q.bind(id.to_string());
         }
 
-        let rows = q
-            .fetch_all(&self.pool)
-            .await
-            .context("Failed to load card states")?;
+        let rows = q.fetch_all(&self.pool).await.context("Failed to load card states")?;
 
         let mut states = Vec::new();
         for row in rows {
@@ -209,11 +201,7 @@ impl StateStore {
     }
 
     /// Get cards due for review before or at the specified time
-    pub async fn get_due_cards(
-        &self,
-        before: DateTime<Utc>,
-        limit: Option<i32>,
-    ) -> Result<Vec<Uuid>> {
+    pub async fn get_due_cards(&self, before: DateTime<Utc>, limit: Option<i32>) -> Result<Vec<Uuid>> {
         let mut query = "SELECT id FROM card_states WHERE due <= ? ORDER BY due ASC".to_string();
 
         if let Some(limit) = limit {
@@ -239,8 +227,7 @@ impl StateStore {
 
     /// Get cards in specific states (e.g., New, Learning, Review)
     pub async fn get_cards_by_state(&self, state: &str, limit: Option<i32>) -> Result<Vec<Uuid>> {
-        let mut query =
-            "SELECT id FROM card_states WHERE state = ? ORDER BY created_at ASC".to_string();
+        let mut query = "SELECT id FROM card_states WHERE state = ? ORDER BY created_at ASC".to_string();
 
         if let Some(limit) = limit {
             query = format!("{} LIMIT {}", query, limit);
@@ -325,19 +312,13 @@ impl StateStore {
     }
 
     /// Unbury a card (restore to previous state)
-    pub async fn unbury_card(
-        &self,
-        card_id: &Uuid,
-        previous_state: crate::data::models::CardState,
-    ) -> Result<()> {
+    pub async fn unbury_card(&self, card_id: &Uuid, previous_state: crate::data::models::CardState) -> Result<()> {
         let state_str = match previous_state {
             crate::data::models::CardState::New => "New",
             crate::data::models::CardState::Learning => "Learning",
             crate::data::models::CardState::Review => "Review",
             crate::data::models::CardState::Relearning => "Relearning",
-            crate::data::models::CardState::Buried | crate::data::models::CardState::Suspended => {
-                "New"
-            }
+            crate::data::models::CardState::Buried | crate::data::models::CardState::Suspended => "New",
         };
 
         sqlx::query(
@@ -357,11 +338,7 @@ impl StateStore {
     }
 
     /// Unsuspend a card (restore to previous state)
-    pub async fn unsuspend_card(
-        &self,
-        card_id: &Uuid,
-        previous_state: crate::data::models::CardState,
-    ) -> Result<()> {
+    pub async fn unsuspend_card(&self, card_id: &Uuid, previous_state: crate::data::models::CardState) -> Result<()> {
         self.unbury_card(card_id, previous_state).await
     }
 
@@ -386,10 +363,7 @@ impl StateStore {
             q = q.bind(id.to_string());
         }
 
-        let rows = q
-            .fetch_all(&self.pool)
-            .await
-            .context("Failed to get buried cards")?;
+        let rows = q.fetch_all(&self.pool).await.context("Failed to get buried cards")?;
 
         let mut card_ids = Vec::new();
         for row in rows {
@@ -423,10 +397,7 @@ impl StateStore {
             q = q.bind(id.to_string());
         }
 
-        let rows = q
-            .fetch_all(&self.pool)
-            .await
-            .context("Failed to get suspended cards")?;
+        let rows = q.fetch_all(&self.pool).await.context("Failed to get suspended cards")?;
 
         let mut card_ids = Vec::new();
         for row in rows {
@@ -464,10 +435,7 @@ impl StateStore {
             q = q.bind(id.to_string());
         }
 
-        let result = q
-            .execute(&self.pool)
-            .await
-            .context("Failed to unbury all cards")?;
+        let result = q.execute(&self.pool).await.context("Failed to unbury all cards")?;
         Ok(result.rows_affected() as usize)
     }
 
@@ -495,35 +463,31 @@ impl StateStore {
 
         let new: i64 = new_row.get("count");
 
-        let learning_row =
-            sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Learning'")
-                .fetch_one(&self.pool)
-                .await
-                .context("Failed to get learning cards count")?;
+        let learning_row = sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Learning'")
+            .fetch_one(&self.pool)
+            .await
+            .context("Failed to get learning cards count")?;
 
         let learning: i64 = learning_row.get("count");
 
-        let review_row =
-            sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Review'")
-                .fetch_one(&self.pool)
-                .await
-                .context("Failed to get review cards count")?;
+        let review_row = sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Review'")
+            .fetch_one(&self.pool)
+            .await
+            .context("Failed to get review cards count")?;
 
         let review: i64 = review_row.get("count");
 
-        let buried_row =
-            sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Buried'")
-                .fetch_one(&self.pool)
-                .await
-                .context("Failed to get buried cards count")?;
+        let buried_row = sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Buried'")
+            .fetch_one(&self.pool)
+            .await
+            .context("Failed to get buried cards count")?;
 
         let buried: i64 = buried_row.get("count");
 
-        let suspended_row =
-            sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Suspended'")
-                .fetch_one(&self.pool)
-                .await
-                .context("Failed to get suspended cards count")?;
+        let suspended_row = sqlx::query("SELECT COUNT(*) as count FROM card_states WHERE state = 'Suspended'")
+            .fetch_one(&self.pool)
+            .await
+            .context("Failed to get suspended cards count")?;
 
         let suspended: i64 = suspended_row.get("count");
 

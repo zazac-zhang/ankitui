@@ -5,10 +5,10 @@
 use crate::data::models::{EnhancedMediaRef, MediaMetadata, MediaRef, MediaStatus, MediaType};
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
 /// Media dimensions for images and video
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,10 +57,7 @@ impl MediaManager {
 
         let source = source_path.as_ref();
         if !source.exists() {
-            return Err(anyhow!(
-                "Source media file does not exist: {}",
-                source.display()
-            ));
+            return Err(anyhow!("Source media file does not exist: {}", source.display()));
         }
 
         // Validate file size
@@ -74,10 +71,7 @@ impl MediaManager {
         }
 
         // Generate unique filename
-        let file_extension = source
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("bin");
+        let file_extension = source.extension().and_then(|ext| ext.to_str()).unwrap_or("bin");
 
         let filename = format!("{}.{}", Uuid::new_v4(), file_extension);
         let dest_path = self.media_dir.join(&filename);
@@ -86,9 +80,7 @@ impl MediaManager {
         fs::copy(source, &dest_path)?;
 
         // Extract metadata
-        let metadata = self
-            .extract_metadata(&dest_path, &filename, file_size)
-            .await?;
+        let metadata = self.extract_metadata(&dest_path, &filename, file_size).await?;
 
         Ok(EnhancedMediaRef {
             id: Uuid::new_v4(),
@@ -105,35 +97,26 @@ impl MediaManager {
     }
 
     /// Add media from URL (downloads and caches locally)
-    pub async fn add_media_from_url(
-        &self,
-        url: &str,
-        media_type: MediaType,
-    ) -> Result<EnhancedMediaRef> {
+    pub async fn add_media_from_url(&self, url: &str, media_type: MediaType) -> Result<EnhancedMediaRef> {
         self.ensure_media_dir()?;
 
         // Generate unique filename
-        let filename = format!(
-            "{}.{}",
-            Uuid::new_v4(),
-            self.get_extension_for_type(&media_type)
-        );
+        let filename = format!("{}.{}", Uuid::new_v4(), self.get_extension_for_type(&media_type));
 
         let local_path = self.media_dir.join(&filename);
 
         // Download the file
-        let response = reqwest::get(url).await
-            .context("Failed to fetch URL")?;
+        let response = reqwest::get(url).await.context("Failed to fetch URL")?;
 
         if !response.status().is_success() {
             return Err(anyhow!("HTTP error: {}", response.status()));
         }
 
-        let bytes = response.bytes().await
-            .context("Failed to read response body")?;
+        let bytes = response.bytes().await.context("Failed to read response body")?;
 
         // Write to local file
-        tokio::fs::write(&local_path, bytes).await
+        tokio::fs::write(&local_path, bytes)
+            .await
             .context("Failed to write media file")?;
 
         log::info!("Downloaded media from {} to {:?}", url, local_path);
@@ -226,12 +209,7 @@ impl MediaManager {
     }
 
     /// Extract metadata from media file
-    async fn extract_metadata(
-        &self,
-        path: &Path,
-        filename: &str,
-        file_size: u64,
-    ) -> Result<MediaMetadata> {
+    async fn extract_metadata(&self, path: &Path, filename: &str, file_size: u64) -> Result<MediaMetadata> {
         let mime_type = self.guess_mime_type(path)?;
 
         // Extract dimensions for images
@@ -271,7 +249,8 @@ impl MediaManager {
         let dimensions = tokio::task::spawn_blocking(move || {
             let img = image::open(&path_clone)?;
             Ok::<_, anyhow::Error>((img.width(), img.height()))
-        }).await
+        })
+        .await
         .context("Failed to join blocking task")?
         .context("Failed to open image")?;
 
@@ -380,4 +359,3 @@ impl MediaManager {
         })
     }
 }
-

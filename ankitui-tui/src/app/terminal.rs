@@ -1,15 +1,15 @@
 //! Terminal management for the TUI application
 
-use std::io;
+use crate::utils::error::{TuiError, TuiResult};
 use crossterm::{
-    event::{EnableMouseCapture, DisableMouseCapture},
+    cursor::{Hide, Show},
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
-    terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
-    cursor::{Show, Hide},
+    terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
-use crate::utils::error::{TuiError, TuiResult};
+use std::io;
 
 /// Terminal configuration
 #[derive(Debug, Clone)]
@@ -65,17 +65,11 @@ impl TerminalManager {
         log::debug!("Initializing terminal");
 
         // Enable raw mode
-        enable_raw_mode()
-            .map_err(|e| TuiError::render(format!("Failed to enable raw mode: {}", e)))?;
+        enable_raw_mode().map_err(|e| TuiError::render(format!("Failed to enable raw mode: {}", e)))?;
 
         // Enter alternate screen
-        execute!(
-            io::stdout(),
-            EnterAlternateScreen,
-            Hide,
-            Clear(ClearType::All)
-        )
-        .map_err(|e| TuiError::render(format!("Failed to setup terminal: {}", e)))?;
+        execute!(io::stdout(), EnterAlternateScreen, Hide, Clear(ClearType::All))
+            .map_err(|e| TuiError::render(format!("Failed to setup terminal: {}", e)))?;
 
         // Enable mouse capture if configured
         if self.config.enable_mouse {
@@ -111,11 +105,7 @@ impl TerminalManager {
             let _ = execute!(io::stdout(), DisableMouseCapture);
         }
 
-        let _ = execute!(
-            io::stdout(),
-            LeaveAlternateScreen,
-            Show
-        );
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, Show);
 
         let _ = disable_raw_mode();
 
@@ -146,11 +136,8 @@ impl TerminalManager {
     pub fn set_title(&self, title: &str) -> TuiResult<()> {
         // Set terminal title using escape sequences
         // This works on most terminals
-        execute!(
-            io::stdout(),
-            crossterm::terminal::SetTitle(title)
-        )
-        .map_err(|e| TuiError::render(format!("Failed to set terminal title: {}", e)))?;
+        execute!(io::stdout(), crossterm::terminal::SetTitle(title))
+            .map_err(|e| TuiError::render(format!("Failed to set terminal title: {}", e)))?;
 
         Ok(())
     }
@@ -158,7 +145,8 @@ impl TerminalManager {
     /// Clear the terminal screen
     pub fn clear(&mut self) -> TuiResult<()> {
         if let Some(terminal) = &mut self.terminal {
-            terminal.clear()
+            terminal
+                .clear()
                 .map_err(|e| TuiError::render(format!("Failed to clear terminal: {}", e)))?;
         }
         Ok(())
@@ -167,7 +155,8 @@ impl TerminalManager {
     /// Hide the cursor
     pub fn hide_cursor(&mut self) -> TuiResult<()> {
         if let Some(terminal) = &mut self.terminal {
-            terminal.hide_cursor()
+            terminal
+                .hide_cursor()
                 .map_err(|e| TuiError::render(format!("Failed to hide cursor: {}", e)))?;
         }
         Ok(())
@@ -176,7 +165,8 @@ impl TerminalManager {
     /// Show the cursor
     pub fn show_cursor(&mut self) -> TuiResult<()> {
         if let Some(terminal) = &mut self.terminal {
-            terminal.show_cursor()
+            terminal
+                .show_cursor()
                 .map_err(|e| TuiError::render(format!("Failed to show cursor: {}", e)))?;
         }
         Ok(())
@@ -239,11 +229,7 @@ impl TerminalManager {
         }
 
         // Leave raw mode and alternate screen temporarily
-        let _ = execute!(
-            io::stdout(),
-            LeaveAlternateScreen,
-            Show
-        );
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, Show);
         let _ = disable_raw_mode();
 
         // Send SIGTSTP to suspend the process

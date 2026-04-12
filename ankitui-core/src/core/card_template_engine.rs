@@ -16,66 +16,92 @@ impl CardTemplateEngine {
         let mut templates = HashMap::new();
 
         // Basic card template
-        templates.insert(CardType::Basic, CardTemplate {
-            name: "Basic".to_string(),
-            card_type: CardType::Basic,
-            front_template: "{{front}}".to_string(),
-            back_template: "{{front}}\n\n---\n\n{{back}}".to_string(),
-            fields: vec!["front".to_string(), "back".to_string()],
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
-        });
+        templates.insert(
+            CardType::Basic,
+            CardTemplate {
+                name: "Basic".to_string(),
+                card_type: CardType::Basic,
+                front_template: "{{front}}".to_string(),
+                back_template: "{{front}}\n\n---\n\n{{back}}".to_string(),
+                fields: vec!["front".to_string(), "back".to_string()],
+                created_at: chrono::Utc::now(),
+                modified_at: chrono::Utc::now(),
+            },
+        );
 
         // Basic reversed card template
-        templates.insert(CardType::BasicReversed, CardTemplate {
-            name: "Basic (and reversed card)".to_string(),
-            card_type: CardType::BasicReversed,
-            front_template: "{{front}}".to_string(),
-            back_template: "{{back}}".to_string(),
-            fields: vec!["front".to_string(), "back".to_string()],
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
-        });
+        templates.insert(
+            CardType::BasicReversed,
+            CardTemplate {
+                name: "Basic (and reversed card)".to_string(),
+                card_type: CardType::BasicReversed,
+                front_template: "{{front}}".to_string(),
+                back_template: "{{back}}".to_string(),
+                fields: vec!["front".to_string(), "back".to_string()],
+                created_at: chrono::Utc::now(),
+                modified_at: chrono::Utc::now(),
+            },
+        );
 
         // Cloze card template
-        templates.insert(CardType::Cloze, CardTemplate {
-            name: "Cloze".to_string(),
-            card_type: CardType::Cloze,
-            front_template: "{{cloze:Text}}".to_string(),
-            back_template: "{{cloze:Text}}".to_string(),
-            fields: vec!["Text".to_string()],
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
-        });
+        templates.insert(
+            CardType::Cloze,
+            CardTemplate {
+                name: "Cloze".to_string(),
+                card_type: CardType::Cloze,
+                front_template: "{{cloze:Text}}".to_string(),
+                back_template: "{{cloze:Text}}".to_string(),
+                fields: vec!["Text".to_string()],
+                created_at: chrono::Utc::now(),
+                modified_at: chrono::Utc::now(),
+            },
+        );
 
         // Input card template
-        templates.insert(CardType::Input, CardTemplate {
-            name: "Input".to_string(),
-            card_type: CardType::Input,
-            front_template: "{{question}}".to_string(),
-            back_template: "{{question}}\n\nAnswer: {{answer}}".to_string(),
-            fields: vec!["question".to_string(), "answer".to_string()],
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
-        });
+        templates.insert(
+            CardType::Input,
+            CardTemplate {
+                name: "Input".to_string(),
+                card_type: CardType::Input,
+                front_template: "{{question}}".to_string(),
+                back_template: "{{question}}\n\nAnswer: {{answer}}".to_string(),
+                fields: vec!["question".to_string(), "answer".to_string()],
+                created_at: chrono::Utc::now(),
+                modified_at: chrono::Utc::now(),
+            },
+        );
 
         // Multiple choice card template
-        templates.insert(CardType::MultipleChoice, CardTemplate {
-            name: "Multiple Choice".to_string(),
-            card_type: CardType::MultipleChoice,
-            front_template: "{{question}}".to_string(),
-            back_template: "{{question}}\n\n{{#options}}\n{{.}}\n{{/options}}\n\nCorrect: {{correct_answer}}".to_string(),
-            fields: vec!["question".to_string(), "options".to_string(), "correct_answer".to_string()],
-            created_at: chrono::Utc::now(),
-            modified_at: chrono::Utc::now(),
-        });
+        templates.insert(
+            CardType::MultipleChoice,
+            CardTemplate {
+                name: "Multiple Choice".to_string(),
+                card_type: CardType::MultipleChoice,
+                front_template: "{{question}}".to_string(),
+                back_template: "{{question}}\n\n{{#options}}\n{{.}}\n{{/options}}\n\nCorrect: {{correct_answer}}"
+                    .to_string(),
+                fields: vec![
+                    "question".to_string(),
+                    "options".to_string(),
+                    "correct_answer".to_string(),
+                ],
+                created_at: chrono::Utc::now(),
+                modified_at: chrono::Utc::now(),
+            },
+        );
 
         Self { templates }
     }
 
     /// Render a card using the appropriate template
-    pub fn render_card(&self, card_content: &ExtendedCardContent, side: CardSide) -> Result<RenderedCard, TemplateError> {
-        let template = self.templates.get(&card_content.card_type)
+    pub fn render_card(
+        &self,
+        card_content: &ExtendedCardContent,
+        side: CardSide,
+    ) -> Result<RenderedCard, TemplateError> {
+        let template = self
+            .templates
+            .get(&card_content.card_type)
             .ok_or(TemplateError::TemplateNotFound(card_content.card_type))?;
 
         let context = self.build_rendering_context(card_content, side)?;
@@ -91,7 +117,11 @@ impl CardTemplateEngine {
     }
 
     /// Build rendering context from card content
-    fn build_rendering_context(&self, card_content: &ExtendedCardContent, side: CardSide) -> Result<CardRenderingContext, TemplateError> {
+    fn build_rendering_context(
+        &self,
+        card_content: &ExtendedCardContent,
+        side: CardSide,
+    ) -> Result<CardRenderingContext, TemplateError> {
         let mut fields = HashMap::new();
         let mut extra = HashMap::new();
 
@@ -111,7 +141,10 @@ impl CardTemplateEngine {
                         let back_text = format_cloze_back(&cloze_data, cloze_data.cloze_number);
 
                         fields.insert("Text".to_string(), cloze_data.text);
-                        fields.insert("cloze:Text".to_string(), if side == CardSide::Front { front_text } else { back_text });
+                        fields.insert(
+                            "cloze:Text".to_string(),
+                            if side == CardSide::Front { front_text } else { back_text },
+                        );
 
                         extra.insert("cloze_number".to_string(), cloze_data.cloze_number.to_string());
                     }
@@ -178,7 +211,12 @@ impl CardTemplateEngine {
     }
 
     /// Process template with context
-    fn process_template(&self, template: &CardTemplate, context: &CardRenderingContext, side: CardSide) -> Result<String, TemplateError> {
+    fn process_template(
+        &self,
+        template: &CardTemplate,
+        context: &CardRenderingContext,
+        side: CardSide,
+    ) -> Result<String, TemplateError> {
         let template_str = if side == CardSide::Front {
             &template.front_template
         } else {
@@ -214,7 +252,8 @@ impl CardTemplateEngine {
             if let Some(start_pos) = processed.find(&start_pattern) {
                 if let Some(end_pos) = processed[start_pos..].find(&end_pattern) {
                     let end_pos = start_pos + end_pos + end_pattern.len();
-                    let block_content = &processed[start_pos + start_pattern.len()..start_pos + end_pos - end_pattern.len()];
+                    let block_content =
+                        &processed[start_pos + start_pattern.len()..start_pos + end_pos - end_pattern.len()];
 
                     // Replace the entire block with the content if field exists and is not empty
                     let replacement = if !fields[field_name].is_empty() {
@@ -384,7 +423,9 @@ fn format_cloze_front(cloze_data: &ClozeData, cloze_number: usize) -> String {
 /// Format cloze text for back side
 fn format_cloze_back(cloze_data: &ClozeData, cloze_number: usize) -> String {
     if let Some(cloze_item) = cloze_data.clozes.get(cloze_number - 1) {
-        cloze_data.text.replace(&cloze_item.answer, &format!("[{}]", cloze_item.answer))
+        cloze_data
+            .text
+            .replace(&cloze_item.answer, &format!("[{}]", cloze_item.answer))
     } else {
         cloze_data.text.clone()
     }
@@ -405,10 +446,7 @@ mod tests {
     #[test]
     fn test_basic_card_rendering() {
         let engine = CardTemplateEngine::new();
-        let card = ExtendedCardContent::basic(
-            "What is 2+2?".to_string(),
-            "4".to_string(),
-        );
+        let card = ExtendedCardContent::basic("What is 2+2?".to_string(), "4".to_string());
 
         let front_result = engine.render_card(&card, CardSide::Front).unwrap();
         let back_result = engine.render_card(&card, CardSide::Back).unwrap();
@@ -458,11 +496,7 @@ mod tests {
         let engine = CardTemplateEngine::new();
 
         // Test input card
-        let input_card = ExtendedCardContent::input(
-            "Question".to_string(),
-            "Answer".to_string(),
-            None,
-        );
+        let input_card = ExtendedCardContent::input("Question".to_string(), "Answer".to_string(), None);
 
         assert!(matches!(
             engine.validate_answer(&input_card, "Answer"),

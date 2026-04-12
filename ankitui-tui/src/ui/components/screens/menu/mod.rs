@@ -2,7 +2,13 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 
 /// Main menu screen
 pub struct MenuScreen {
@@ -23,7 +29,7 @@ impl MenuScreen {
         "🗂️ Manage Decks",
         "📊 Statistics",
         "⚙️ Settings",
-        "❌ Quit"
+        "❌ Quit",
     ];
 
     pub fn get_selected_index(&self) -> usize {
@@ -64,8 +70,7 @@ impl Component for MenuScreen {
             })
             .collect();
 
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("AnkiTUI - Main Menu"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("AnkiTUI - Main Menu"));
 
         f.render_widget(list, area);
 
@@ -78,8 +83,7 @@ impl Component for MenuScreen {
             };
 
             let help_text = "↑↓: Navigate | Enter: Select | Esc: Quit";
-            let help = Paragraph::new(help_text)
-                .style(Style::default().fg(Color::Cyan));
+            let help = Paragraph::new(help_text).style(Style::default().fg(Color::Cyan));
 
             f.render_widget(help, help_area);
         }

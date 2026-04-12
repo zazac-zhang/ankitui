@@ -20,11 +20,7 @@ fn init_logging() {
     let log_file_path = "./ankitui.log";
 
     // Write session start marker to file
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_file_path)
-    {
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_file_path) {
         let _ = writeln!(
             file,
             "\n=== AnkiTUI Session Started at {} ===",
@@ -50,11 +46,7 @@ fn init_logging() {
             eprintln!("{}", log_message);
 
             // Also write to file
-            if let Ok(mut file) = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&log_file_path_clone)
-            {
+            if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_file_path_clone) {
                 let _ = writeln!(file, "{}", log_message);
             }
 
@@ -137,11 +129,7 @@ async fn run_tui_mode() -> Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
 
     Ok(())

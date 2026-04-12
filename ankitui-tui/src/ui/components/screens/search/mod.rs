@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 
 /// Search type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,7 +151,8 @@ impl Component for SearchScreen {
                 .block(Block::default().borders(Borders::ALL).title("Results"));
             f.render_widget(empty_para, chunks[2]);
         } else {
-            let items: Vec<ListItem> = self.results
+            let items: Vec<ListItem> = self
+                .results
                 .iter()
                 .enumerate()
                 .map(|(i, r)| {
@@ -154,8 +160,11 @@ impl Component for SearchScreen {
                     ListItem::new(format!("{} {}", prefix, r))
                 })
                 .collect();
-            let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title(format!("Results ({})", self.results.len())));
+            let list = List::new(items).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!("Results ({})", self.results.len())),
+            );
             f.render_widget(list, chunks[2]);
         }
 
@@ -209,9 +218,19 @@ impl Component for SearchScreen {
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "search_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "search_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

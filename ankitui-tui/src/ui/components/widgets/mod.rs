@@ -60,9 +60,7 @@ impl Component for Button {
         }
 
         let style = if focused {
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::REVERSED)
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::REVERSED)
         } else if self.state.enabled {
             Style::default().fg(Color::White)
         } else {
@@ -71,9 +69,7 @@ impl Component for Button {
 
         let block = Block::default().borders(Borders::ALL).style(style);
 
-        let paragraph = Paragraph::new(self.label.as_str())
-            .block(block)
-            .style(style);
+        let paragraph = Paragraph::new(self.label.as_str()).block(block).style(style);
 
         f.render_widget(paragraph, area);
     }
@@ -131,9 +127,7 @@ impl InteractiveComponent for Button {
                 && event.row >= bounds.y
                 && event.row < bounds.y + bounds.height
             {
-                if event.kind
-                    == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left)
-                {
+                if event.kind == crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) {
                     self.click();
                     return Ok(true);
                 }
@@ -145,10 +139,7 @@ impl InteractiveComponent for Button {
     fn get_keybindings(&self) -> Vec<(crossterm::event::KeyEvent, String)> {
         vec![
             (
-                crossterm::event::KeyEvent::new(
-                    crossterm::event::KeyCode::Enter,
-                    crossterm::event::KeyModifiers::NONE,
-                ),
+                crossterm::event::KeyEvent::new(crossterm::event::KeyCode::Enter, crossterm::event::KeyModifiers::NONE),
                 "Activate".to_string(),
             ),
             (
@@ -249,44 +240,42 @@ impl Component for Input {
         }
 
         match event {
-            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => {
-                match key.code {
-                    crossterm::event::KeyCode::Char(c) => {
-                        self.insert_char(c);
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Backspace => {
-                        self.delete_char_before();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Left => {
-                        if self.cursor_pos > 0 {
-                            self.cursor_pos -= 1;
-                            self.mark_dirty();
-                        }
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Right => {
-                        if self.cursor_pos < self.value.len() {
-                            self.cursor_pos += 1;
-                            self.mark_dirty();
-                        }
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Home => {
-                        self.cursor_pos = 0;
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::End => {
-                        self.cursor_pos = self.value.len();
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Esc => Ok(false),
-                    _ => Ok(false),
+            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => match key.code {
+                crossterm::event::KeyCode::Char(c) => {
+                    self.insert_char(c);
+                    Ok(true)
                 }
-            }
+                crossterm::event::KeyCode::Backspace => {
+                    self.delete_char_before();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Left => {
+                    if self.cursor_pos > 0 {
+                        self.cursor_pos -= 1;
+                        self.mark_dirty();
+                    }
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Right => {
+                    if self.cursor_pos < self.value.len() {
+                        self.cursor_pos += 1;
+                        self.mark_dirty();
+                    }
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Home => {
+                    self.cursor_pos = 0;
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::End => {
+                    self.cursor_pos = self.value.len();
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Esc => Ok(false),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
@@ -402,39 +391,37 @@ impl Component for List {
         }
 
         match event {
-            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => {
-                match key.code {
-                    crossterm::event::KeyCode::Up | crossterm::event::KeyCode::Char('k') => {
-                        self.move_up();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Down | crossterm::event::KeyCode::Char('j') => {
-                        self.move_down();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::Home => {
-                        self.selected_index = 0;
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::End => {
-                        self.selected_index = self.items.len().saturating_sub(1);
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::PageUp => {
-                        self.selected_index = self.selected_index.saturating_sub(10);
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::PageDown => {
-                        self.selected_index = (self.selected_index + 10).min(self.items.len().saturating_sub(1));
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    _ => Ok(false),
+            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => match key.code {
+                crossterm::event::KeyCode::Up | crossterm::event::KeyCode::Char('k') => {
+                    self.move_up();
+                    Ok(true)
                 }
-            }
+                crossterm::event::KeyCode::Down | crossterm::event::KeyCode::Char('j') => {
+                    self.move_down();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Home => {
+                    self.selected_index = 0;
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::End => {
+                    self.selected_index = self.items.len().saturating_sub(1);
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::PageUp => {
+                    self.selected_index = self.selected_index.saturating_sub(10);
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::PageDown => {
+                    self.selected_index = (self.selected_index + 10).min(self.items.len().saturating_sub(1));
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
@@ -533,9 +520,10 @@ impl Component for Table {
             return;
         }
 
-        let header_cells = self.headers.iter().map(|h| {
-            Cell::from(h.clone()).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-        });
+        let header_cells = self
+            .headers
+            .iter()
+            .map(|h| Cell::from(h.clone()).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
         let header_row = Row::new(header_cells).style(Style::default().bg(Color::DarkGray));
 
         let data_rows = self.rows.iter().enumerate().map(|(i, row)| {
@@ -550,7 +538,10 @@ impl Component for Table {
 
         let widths: Vec<_> = if self.column_widths.is_empty() {
             let pct = 100 / self.headers.len().max(1) as u16;
-            self.headers.iter().map(|_| ratatui::layout::Constraint::Percentage(pct)).collect()
+            self.headers
+                .iter()
+                .map(|_| ratatui::layout::Constraint::Percentage(pct))
+                .collect()
         } else {
             self.column_widths.clone()
         };
@@ -572,38 +563,50 @@ impl Component for Table {
         }
 
         match event {
-            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => {
-                match key.code {
-                    crossterm::event::KeyCode::Up => { self.move_up(); Ok(true) }
-                    crossterm::event::KeyCode::Down => { self.move_down(); Ok(true) }
-                    crossterm::event::KeyCode::Home => {
-                        self.selected_row = 0;
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    crossterm::event::KeyCode::End => {
-                        self.selected_row = self.rows.len().saturating_sub(1);
-                        self.mark_dirty();
-                        Ok(true)
-                    }
-                    _ => Ok(false),
+            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => match key.code {
+                crossterm::event::KeyCode::Up => {
+                    self.move_up();
+                    Ok(true)
                 }
-            }
+                crossterm::event::KeyCode::Down => {
+                    self.move_down();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Home => {
+                    self.selected_row = 0;
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::End => {
+                    self.selected_row = self.rows.len().saturating_sub(1);
+                    self.mark_dirty();
+                    Ok(true)
+                }
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
 
     fn can_focus(&self) -> bool {
         self.state.enabled && !self.rows.is_empty()
     }
 
-    fn id(&self) -> &str { &self.id }
+    fn id(&self) -> &str {
+        &self.id
+    }
 
-    fn state(&self) -> &ComponentState { &self.state }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
 
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 /// Dialog widget for confirmations and alerts
@@ -667,21 +670,26 @@ impl Component for Dialog {
             ])
             .split(area);
 
-        let title_paragraph = Paragraph::new(self.title.as_str())
-            .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
+        let title_paragraph =
+            Paragraph::new(self.title.as_str()).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
         f.render_widget(title_paragraph, chunks[0]);
 
-        let message_paragraph = Paragraph::new(self.message.as_str())
-            .style(Style::default());
+        let message_paragraph = Paragraph::new(self.message.as_str()).style(Style::default());
         f.render_widget(message_paragraph, chunks[1]);
 
-        let button_text: String = self.buttons.iter().enumerate().map(|(i, b)| {
-            if i == self.selected_button {
-                format!("[ {} ]", b)
-            } else {
-                format!("  {}  ", b)
-            }
-        }).collect::<Vec<_>>().join("   ");
+        let button_text: String = self
+            .buttons
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                if i == self.selected_button {
+                    format!("[ {} ]", b)
+                } else {
+                    format!("  {}  ", b)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("   ");
 
         let button_paragraph = Paragraph::new(button_text)
             .style(Style::default().fg(Color::Cyan))
@@ -695,28 +703,40 @@ impl Component for Dialog {
         }
 
         match event {
-            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => {
-                match key.code {
-                    crossterm::event::KeyCode::Left => { self.move_left(); Ok(true) }
-                    crossterm::event::KeyCode::Right => { self.move_right(); Ok(true) }
-                    crossterm::event::KeyCode::Enter => Ok(true),
-                    crossterm::event::KeyCode::Esc => Ok(false),
-                    _ => Ok(false),
+            crossterm::event::Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => match key.code {
+                crossterm::event::KeyCode::Left => {
+                    self.move_left();
+                    Ok(true)
                 }
-            }
+                crossterm::event::KeyCode::Right => {
+                    self.move_right();
+                    Ok(true)
+                }
+                crossterm::event::KeyCode::Enter => Ok(true),
+                crossterm::event::KeyCode::Esc => Ok(false),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
 
     fn can_focus(&self) -> bool {
         self.state.enabled
     }
 
-    fn id(&self) -> &str { &self.id }
+    fn id(&self) -> &str {
+        &self.id
+    }
 
-    fn state(&self) -> &ComponentState { &self.state }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
 
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

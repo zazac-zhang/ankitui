@@ -71,9 +71,7 @@ impl Scheduler {
 
     /// Create a scheduler without configuration provider (uses defaults)
     pub fn new_with_defaults() -> Self {
-        Self {
-            config_provider: None,
-        }
+        Self { config_provider: None }
     }
 
     /// Update configuration provider
@@ -124,7 +122,7 @@ impl Scheduler {
             CardState::New => true, // New cards are always available
             CardState::Learning | CardState::Relearning => card.state.due <= now,
             CardState::Review => card.state.due <= now,
-            CardState::Buried => false, // Buried cards are not available
+            CardState::Buried => false,    // Buried cards are not available
             CardState::Suspended => false, // Suspended cards are never available
         }
     }
@@ -143,16 +141,8 @@ impl Scheduler {
     }
 
     /// Get cards due for review within a time window
-    pub fn get_due_cards<'a>(
-        &self,
-        cards: &'a [Card],
-        now: DateTime<Utc>,
-        limit: Option<usize>,
-    ) -> Vec<&'a Card> {
-        let mut due_cards: Vec<&'a Card> = cards
-            .iter()
-            .filter(|card| self.is_card_due(card, now))
-            .collect();
+    pub fn get_due_cards<'a>(&self, cards: &'a [Card], now: DateTime<Utc>, limit: Option<usize>) -> Vec<&'a Card> {
+        let mut due_cards: Vec<&'a Card> = cards.iter().filter(|card| self.is_card_due(card, now)).collect();
 
         // Sort by due date (earliest first)
         due_cards.sort_by_key(|card| card.state.due);
@@ -167,10 +157,7 @@ impl Scheduler {
 
     /// Get cards in specific state
     pub fn get_cards_by_state<'a>(&self, cards: &'a [Card], state: CardState) -> Vec<&'a Card> {
-        cards
-            .iter()
-            .filter(|card| card.state.state == state)
-            .collect()
+        cards.iter().filter(|card| card.state.state == state).collect()
     }
 
     /// Convert CardState to CardQueue
@@ -253,8 +240,7 @@ impl Scheduler {
         }
 
         // Reduce ease factor
-        card.state.ease_factor =
-            (card.state.ease_factor - 0.2).max(self.get_scheduler_params().min_ease_factor);
+        card.state.ease_factor = (card.state.ease_factor - 0.2).max(self.get_scheduler_params().min_ease_factor);
     }
 
     fn process_hard(&self, card: &mut Card, now: DateTime<Utc>) {
@@ -360,8 +346,7 @@ impl Scheduler {
                 if card.state.interval == 0 {
                     card.state.interval = 1;
                 } else {
-                    card.state.interval =
-                        (card.state.interval as f32 * card.state.ease_factor) as i32;
+                    card.state.interval = (card.state.interval as f32 * card.state.ease_factor) as i32;
                 }
                 card.state.due = self.calculate_next_review(card.state.interval, now);
             }
@@ -406,10 +391,8 @@ impl Scheduler {
                 };
 
                 // Apply interval modifier, easy bonus, and an additional easy graduation bonus
-                let easy_graduation_interval = ((base_interval as f32)
-                    * params.interval_modifier
-                    * params.easy_bonus
-                    * params.easy_factor) as i32;
+                let easy_graduation_interval =
+                    ((base_interval as f32) * params.interval_modifier * params.easy_bonus * params.easy_factor) as i32;
 
                 // Ensure minimum easy interval but respect maximum
                 card.state.interval = easy_graduation_interval
@@ -424,9 +407,7 @@ impl Scheduler {
             CardState::Review => {
                 // Easy bonus for review cards
                 let params = self.get_scheduler_params();
-                card.state.interval = (card.state.interval as f32
-                    * card.state.ease_factor
-                    * params.easy_bonus) as i32;
+                card.state.interval = (card.state.interval as f32 * card.state.ease_factor * params.easy_bonus) as i32;
                 card.state.due = self.calculate_next_review(card.state.interval, now);
 
                 // Increase ease factor
@@ -535,9 +516,7 @@ impl Scheduler {
             }
 
             // Count cards due tomorrow
-            if card.state.due >= tomorrow_start
-                && card.state.due < tomorrow_start + Duration::days(1)
-            {
+            if card.state.due >= tomorrow_start && card.state.due < tomorrow_start + Duration::days(1) {
                 due_tomorrow += 1;
             }
 
@@ -600,9 +579,7 @@ mod tests {
         let now = Utc::now();
 
         // Test Again rating on new card
-        scheduler
-            .update_card(&mut card, Rating::Again, now)
-            .unwrap();
+        scheduler.update_card(&mut card, Rating::Again, now).unwrap();
         assert_eq!(card.state.state, CardState::Learning);
         assert_eq!(card.state.interval, 0);
         assert!(card.state.due > now);
@@ -625,9 +602,7 @@ mod tests {
         let initial_ease = card.state.ease_factor;
 
         // Test Again reduces ease factor
-        scheduler
-            .update_card(&mut card, Rating::Again, now)
-            .unwrap();
+        scheduler.update_card(&mut card, Rating::Again, now).unwrap();
         assert!(card.state.ease_factor < initial_ease);
 
         // Test Easy increases ease factor

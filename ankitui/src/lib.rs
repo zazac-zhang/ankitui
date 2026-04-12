@@ -49,25 +49,25 @@ pub use ankitui_core::config::{
 // Modern TUI system exports - New component-based architecture
 pub use ankitui_tui::{
     // Core application
-    App,                // Main application structure
+    App, // Main application structure
 
     // Domain types
-    AppState,           // Application states and transitions
-    CardRating,         // Card rating types
-    SessionState,       // Study session state
-    UserPreferences,    // User preferences
-
+    AppState,   // Application states and transitions
+    CardRating, // Card rating types
     // Services
-    DeckService,        // Deck management service
-    StudyService,       // Study session service
-    StatisticsService,  // Statistics service
+    DeckService,       // Deck management service
+    SessionState,      // Study session state
+    StatisticsService, // Statistics service
 
+    StudyService, // Study session service
     // Error handling
-    TuiError,           // TUI-specific error types
-    TuiResult,          // TUI result type
+    TuiError,  // TUI-specific error types
+    TuiResult, // TUI result type
+
+    UserPreferences, // User preferences
 
     // Version information
-    VERSION,            // Application version
+    VERSION, // Application version
 };
 
 // ============================================================================

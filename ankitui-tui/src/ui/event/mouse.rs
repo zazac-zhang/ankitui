@@ -1,6 +1,9 @@
 //! Mouse event handling
 
-use crossterm::event::{KeyEvent, MouseEvent as CrosstermMouseEvent, MouseEventKind, MouseButton as CrosstermMouseButton, KeyModifiers as CrosstermKeyModifiers};
+use crossterm::event::{
+    KeyEvent, KeyModifiers as CrosstermKeyModifiers, MouseButton as CrosstermMouseButton,
+    MouseEvent as CrosstermMouseEvent, MouseEventKind,
+};
 use ratatui::layout::Rect;
 use serde::{Deserialize, Serialize};
 
@@ -99,12 +102,7 @@ pub enum MouseButton {
 }
 
 impl MouseEvent {
-    pub fn new(
-        kind: MouseKind,
-        column: u16,
-        row: u16,
-        modifiers: crossterm::event::KeyModifiers,
-    ) -> Self {
+    pub fn new(kind: MouseKind, column: u16, row: u16, modifiers: crossterm::event::KeyModifiers) -> Self {
         Self {
             kind,
             column,
@@ -167,8 +165,7 @@ impl MouseEvent {
     }
 
     pub fn has_ctrl(&self) -> bool {
-        self.modifiers
-            .contains(crossterm::event::KeyModifiers::CONTROL)
+        self.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
     }
 
     pub fn has_alt(&self) -> bool {
@@ -176,8 +173,7 @@ impl MouseEvent {
     }
 
     pub fn has_shift(&self) -> bool {
-        self.modifiers
-            .contains(crossterm::event::KeyModifiers::SHIFT)
+        self.modifiers.contains(crossterm::event::KeyModifiers::SHIFT)
     }
 
     /// Check if mouse event is within a given rectangle
@@ -200,11 +196,7 @@ impl MouseEvent {
         } else {
             x - self.column
         };
-        let dy = if self.row > y {
-            self.row - y
-        } else {
-            y - self.row
-        };
+        let dy = if self.row > y { self.row - y } else { y - self.row };
         dx <= tolerance && dy <= tolerance
     }
 
@@ -235,13 +227,7 @@ impl MouseEvent {
         if parts.is_empty() {
             format!("{} at ({}, {})", action_desc, self.column, self.row)
         } else {
-            format!(
-                "{} {} at ({}, {})",
-                parts.join("+"),
-                action_desc,
-                self.column,
-                self.row
-            )
+            format!("{} {} at ({}, {})", parts.join("+"), action_desc, self.column, self.row)
         }
     }
 }

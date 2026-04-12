@@ -306,19 +306,11 @@ impl StatsEngine {
             } else {
                 Duration::seconds(0)
             },
-            total_reviews: session_stats
-                .map(|s| s.total_cards_studied as i32)
-                .unwrap_or(0),
-            cards_learned_today: session_stats
-                .map(|s| s.new_cards_studied as i32)
-                .unwrap_or(0),
-            cards_reviewed_today: session_stats
-                .map(|s| s.review_cards_studied as i32)
-                .unwrap_or(0),
+            total_reviews: session_stats.map(|s| s.total_cards_studied as i32).unwrap_or(0),
+            cards_learned_today: session_stats.map(|s| s.new_cards_studied as i32).unwrap_or(0),
+            cards_reviewed_today: session_stats.map(|s| s.review_cards_studied as i32).unwrap_or(0),
             study_streak_days: session_stats.map(|s| s.study_streak_days).unwrap_or(0),
-            longest_study_streak: session_stats
-                .map(|s| s.study_streak_days.max(0))
-                .unwrap_or(0),
+            longest_study_streak: session_stats.map(|s| s.study_streak_days.max(0)).unwrap_or(0),
             difficulty_distribution,
             timeline,
         };
@@ -417,43 +409,23 @@ impl StatsEngine {
         let retention_chart = vec![
             (
                 "1 day".to_string(),
-                retention
-                    .retention_by_interval
-                    .get("0-1")
-                    .unwrap_or(&0.0)
-                    .clone(),
+                retention.retention_by_interval.get("0-1").unwrap_or(&0.0).clone(),
             ),
             (
                 "2-3 days".to_string(),
-                retention
-                    .retention_by_interval
-                    .get("2-3")
-                    .unwrap_or(&0.0)
-                    .clone(),
+                retention.retention_by_interval.get("2-3").unwrap_or(&0.0).clone(),
             ),
             (
                 "1 week".to_string(),
-                retention
-                    .retention_by_interval
-                    .get("7-14")
-                    .unwrap_or(&0.0)
-                    .clone(),
+                retention.retention_by_interval.get("7-14").unwrap_or(&0.0).clone(),
             ),
             (
                 "2 weeks".to_string(),
-                retention
-                    .retention_by_interval
-                    .get("14-21")
-                    .unwrap_or(&0.0)
-                    .clone(),
+                retention.retention_by_interval.get("14-21").unwrap_or(&0.0).clone(),
             ),
             (
                 "1 month".to_string(),
-                retention
-                    .retention_by_interval
-                    .get("21-30")
-                    .unwrap_or(&0.0)
-                    .clone(),
+                retention.retention_by_interval.get("21-30").unwrap_or(&0.0).clone(),
             ),
         ];
 
@@ -472,20 +444,11 @@ impl StatsEngine {
             .collect();
 
         let difficulty_pie = vec![
-            (
-                "Very Easy".to_string(),
-                deck_stats.difficulty_distribution.very_easy,
-            ),
+            ("Very Easy".to_string(), deck_stats.difficulty_distribution.very_easy),
             ("Easy".to_string(), deck_stats.difficulty_distribution.easy),
-            (
-                "Normal".to_string(),
-                deck_stats.difficulty_distribution.normal,
-            ),
+            ("Normal".to_string(), deck_stats.difficulty_distribution.normal),
             ("Hard".to_string(), deck_stats.difficulty_distribution.hard),
-            (
-                "Very Hard".to_string(),
-                deck_stats.difficulty_distribution.very_hard,
-            ),
+            ("Very Hard".to_string(), deck_stats.difficulty_distribution.very_hard),
         ];
 
         let interval_distribution = self.calculate_interval_distribution(deck_stats);
@@ -575,11 +538,7 @@ impl StatsEngine {
         Ok(timeline)
     }
 
-    fn calculate_retention_rate(
-        &self,
-        cards: &[Card],
-        session_stats: Option<&SessionStats>,
-    ) -> f32 {
+    fn calculate_retention_rate(&self, cards: &[Card], session_stats: Option<&SessionStats>) -> f32 {
         if let Some(stats) = session_stats {
             if stats.total_cards_studied > 0 {
                 stats.correct_answers as f32 / stats.total_cards_studied as f32
@@ -618,10 +577,7 @@ impl StatsEngine {
         }
 
         let cutoff_date = Utc::now() - Duration::days(days as i64);
-        let relevant_cards: Vec<_> = cards
-            .iter()
-            .filter(|c| c.state.updated_at >= cutoff_date)
-            .collect();
+        let relevant_cards: Vec<_> = cards.iter().filter(|c| c.state.updated_at >= cutoff_date).collect();
 
         if relevant_cards.is_empty() {
             return 0.0;
@@ -657,11 +613,8 @@ impl StatsEngine {
         // Calculate retention for each interval range
         for (range, cards_in_range) in intervals {
             if !cards_in_range.is_empty() {
-                let avg_ease = cards_in_range
-                    .iter()
-                    .map(|c| c.state.ease_factor)
-                    .sum::<f32>()
-                    / cards_in_range.len() as f32;
+                let avg_ease =
+                    cards_in_range.iter().map(|c| c.state.ease_factor).sum::<f32>() / cards_in_range.len() as f32;
                 let retention = (avg_ease / 2.5).min(1.0).max(0.0);
                 retention_by_interval.insert(range, retention);
             }
@@ -684,20 +637,14 @@ impl StatsEngine {
                 _ => "Mature".to_string(),
             };
 
-            age_groups
-                .entry(age_group)
-                .or_insert_with(Vec::new)
-                .push(card);
+            age_groups.entry(age_group).or_insert_with(Vec::new).push(card);
         }
 
         // Calculate retention for each age group
         for (age, cards_in_age) in age_groups {
             if !cards_in_age.is_empty() {
-                let avg_ease = cards_in_age
-                    .iter()
-                    .map(|c| c.state.ease_factor)
-                    .sum::<f32>()
-                    / cards_in_age.len() as f32;
+                let avg_ease =
+                    cards_in_age.iter().map(|c| c.state.ease_factor).sum::<f32>() / cards_in_age.len() as f32;
                 let retention = (avg_ease / 2.5).min(1.0).max(0.0);
                 retention_by_age.insert(age, retention);
             }
@@ -729,11 +676,8 @@ impl StatsEngine {
                 .collect();
 
             if !cards_in_range.is_empty() {
-                let avg_ease = cards_in_range
-                    .iter()
-                    .map(|c| c.state.ease_factor)
-                    .sum::<f32>()
-                    / cards_in_range.len() as f32;
+                let avg_ease =
+                    cards_in_range.iter().map(|c| c.state.ease_factor).sum::<f32>() / cards_in_range.len() as f32;
                 let retention = (avg_ease / 2.5).min(1.0).max(0.0);
 
                 intervals.push(IntervalRetention {
@@ -807,30 +751,18 @@ impl StatsEngine {
             };
         }
 
-        let cards_per_day_average = recent_data
-            .iter()
-            .map(|d| d.cards_studied as f32)
-            .sum::<f32>()
-            / recent_data.len() as f32;
+        let cards_per_day_average =
+            recent_data.iter().map(|d| d.cards_studied as f32).sum::<f32>() / recent_data.len() as f32;
 
-        let accuracy_trend =
-            self.calculate_trend_direction(recent_data.iter().map(|d| d.accuracy).collect());
+        let accuracy_trend = self.calculate_trend_direction(recent_data.iter().map(|d| d.accuracy).collect());
 
-        let volume_trend = self.calculate_trend_direction(
-            recent_data.iter().map(|d| d.cards_studied as f32).collect(),
-        );
+        let volume_trend = self.calculate_trend_direction(recent_data.iter().map(|d| d.cards_studied as f32).collect());
 
         let consistency_score = self.calculate_consistency_score(&recent_data);
 
-        let best_day = recent_data
-            .iter()
-            .max_by_key(|d| d.cards_studied)
-            .map(|&d| d);
+        let best_day = recent_data.iter().max_by_key(|d| d.cards_studied).map(|&d| d);
 
-        let worst_day = recent_data
-            .iter()
-            .min_by_key(|d| d.cards_studied)
-            .map(|&d| d);
+        let worst_day = recent_data.iter().min_by_key(|d| d.cards_studied).map(|&d| d);
 
         TrendPeriod {
             cards_per_day_average,
@@ -1028,10 +960,7 @@ mod tests {
             create_test_card(Uuid::new_v4(), 25, 2.8, CardState::Review),
         ];
 
-        let stats = engine
-            .calculate_deck_statistics(&deck, &cards, None)
-            .await
-            .unwrap();
+        let stats = engine.calculate_deck_statistics(&deck, &cards, None).await.unwrap();
 
         assert_eq!(stats.total_cards, 4);
         assert_eq!(stats.new_cards, 1);
@@ -1225,16 +1154,10 @@ mod tests {
         let cards = vec![create_test_card(Uuid::new_v4(), 5, 2.5, CardState::Review)];
 
         // First calculation should compute and cache
-        let stats1 = engine
-            .calculate_deck_statistics(&deck, &cards, None)
-            .await
-            .unwrap();
+        let stats1 = engine.calculate_deck_statistics(&deck, &cards, None).await.unwrap();
 
         // Second calculation should use cache (within TTL)
-        let stats2 = engine
-            .calculate_deck_statistics(&deck, &cards, None)
-            .await
-            .unwrap();
+        let stats2 = engine.calculate_deck_statistics(&deck, &cards, None).await.unwrap();
 
         assert_eq!(stats1.deck_id, stats2.deck_id);
         assert_eq!(stats1.total_cards, stats2.total_cards);
@@ -1287,9 +1210,6 @@ mod tests {
 
         // Stable trend
         let stable_values = vec![0.8, 0.81, 0.79, 0.82, 0.8];
-        assert_eq!(
-            engine.calculate_trend_direction(stable_values),
-            TrendDirection::Stable
-        );
+        assert_eq!(engine.calculate_trend_direction(stable_values), TrendDirection::Stable);
     }
 }

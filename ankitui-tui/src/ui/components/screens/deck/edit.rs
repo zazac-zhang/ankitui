@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 use uuid::Uuid;
 
 pub struct DeckEditScreen {
@@ -138,8 +143,7 @@ impl Component for DeckEditScreen {
                 ListItem::new(format!("{} {}: {}", prefix, field, value))
             })
             .collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Fields"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Fields"));
         f.render_widget(list, chunks[1]);
 
         let footer_text = if self.status_message.is_empty() {
@@ -224,9 +228,19 @@ impl Component for DeckEditScreen {
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "deck_edit_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "deck_edit_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

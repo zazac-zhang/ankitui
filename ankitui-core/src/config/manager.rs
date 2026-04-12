@@ -24,10 +24,7 @@ impl ConfigManager {
             default_config
         });
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Create configuration manager with custom config path
@@ -39,10 +36,7 @@ impl ConfigManager {
             default_config
         });
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Create configuration manager with environment variable support
@@ -55,10 +49,7 @@ impl ConfigManager {
             default_config
         });
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Create configuration manager without any config file (for testing)
@@ -66,10 +57,7 @@ impl ConfigManager {
         let config_path = Config::default_path()?;
         let config = Config::default();
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Create configuration manager from a profile
@@ -80,10 +68,7 @@ impl ConfigManager {
         // Save profile as default config
         config.save_to_file(&config_path)?;
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Initialize configuration with profile if no config exists
@@ -98,10 +83,7 @@ impl ConfigManager {
             profile_config
         };
 
-        Ok(Self {
-            config,
-            config_path,
-        })
+        Ok(Self { config, config_path })
     }
 
     /// Get available configuration profiles

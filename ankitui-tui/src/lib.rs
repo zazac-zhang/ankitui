@@ -9,7 +9,7 @@ pub mod ui;
 pub mod utils;
 
 // Re-export key components for easier access
-pub use app::{App, event_loop::run_event_loop_with_app};
+pub use app::{event_loop::run_event_loop_with_app, App};
 pub use domain::*;
 pub use utils::error::{TuiError, TuiResult};
 

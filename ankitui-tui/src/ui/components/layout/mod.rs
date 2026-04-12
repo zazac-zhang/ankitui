@@ -71,9 +71,7 @@ impl Container {
             return None;
         }
         let child = self.children.remove(index);
-        if self.focused_child_index.is_some()
-            && self.focused_child_index.unwrap() >= self.children.len()
-        {
+        if self.focused_child_index.is_some() && self.focused_child_index.unwrap() >= self.children.len() {
             self.focused_child_index = None;
         }
         self.mark_dirty();

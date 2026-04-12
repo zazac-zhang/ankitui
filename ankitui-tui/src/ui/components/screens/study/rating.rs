@@ -2,9 +2,15 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ankitui_core::data::Card;
 use ankitui_core::core::Rating;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders}, style::{Style, Color, Modifier}};
+use ankitui_core::data::Card;
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 /// Study screen for rating card performance
 pub struct StudyRatingScreen {
@@ -49,38 +55,17 @@ impl StudyRatingScreen {
 
     fn get_rating_info(&self, rating: Rating) -> (&'static str, &'static str, Color) {
         match rating {
-            Rating::Again => (
-                "Again",
-                "Show card again soon (reset progress)",
-                Color::Red
-            ),
-            Rating::Hard => (
-                "Hard",
-                "Review with shorter interval",
-                Color::Yellow
-            ),
-            Rating::Good => (
-                "Good",
-                "Normal review interval",
-                Color::Green
-            ),
-            Rating::Easy => (
-                "Easy",
-                "Extend review interval significantly",
-                Color::Cyan
-            ),
+            Rating::Again => ("Again", "Show card again soon (reset progress)", Color::Red),
+            Rating::Hard => ("Hard", "Review with shorter interval", Color::Yellow),
+            Rating::Good => ("Good", "Normal review interval", Color::Green),
+            Rating::Easy => ("Easy", "Extend review interval significantly", Color::Cyan),
         }
     }
 }
 
 impl Component for StudyRatingScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
-        let ratings = [
-            Rating::Again,
-            Rating::Hard,
-            Rating::Good,
-            Rating::Easy
-        ];
+        let ratings = [Rating::Again, Rating::Hard, Rating::Good, Rating::Easy];
 
         let mut rating_text = String::new();
 
@@ -97,10 +82,7 @@ impl Component for StudyRatingScreen {
             let selected = self.selected_rating == Some(*rating);
             let prefix = if selected { "● " } else { "○ " };
 
-            rating_text.push_str(&format!(
-                "{}[{}] {} - {}\n",
-                prefix, key, label, description
-            ));
+            rating_text.push_str(&format!("{}[{}] {} - {}\n", prefix, key, label, description));
         }
 
         rating_text.push_str(&format!(
@@ -110,8 +92,11 @@ impl Component for StudyRatingScreen {
             self.total_cards
         ));
 
-        let paragraph = Paragraph::new(rating_text)
-            .block(Block::default().borders(Borders::ALL).title("How well did you know this card?"));
+        let paragraph = Paragraph::new(rating_text).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("How well did you know this card?"),
+        );
 
         f.render_widget(paragraph, area);
     }

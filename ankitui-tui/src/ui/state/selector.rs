@@ -212,7 +212,8 @@ impl SelectorCache {
         // Check cache validity
         if let Some((timestamp, cached_data)) = self.cache.get(key) {
             let age = now - *timestamp;
-            if age.num_seconds() < 1 { // Cache for 1 second
+            if age.num_seconds() < 1 {
+                // Cache for 1 second
                 if let Ok(cached_value) = bincode::deserialize::<T>(cached_data) {
                     return cached_value;
                 }

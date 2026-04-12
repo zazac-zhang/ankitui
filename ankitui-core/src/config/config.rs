@@ -44,8 +44,8 @@ impl Config {
             let content = std::fs::read_to_string(path)
                 .with_context(|| format!("Failed to read config file: {}", path.display()))?;
 
-            let config: Config = toml::from_str(&content)
-                .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+            let config: Config =
+                toml::from_str(&content).with_context(|| format!("Failed to parse config file: {}", path.display()))?;
 
             config
         } else {
@@ -83,15 +83,11 @@ impl Config {
 
         // Daily limits
         if let Ok(max_new) = std::env::var("ANKITUI_MAX_NEW_CARDS") {
-            config.daily.max_new_cards = max_new
-                .parse()
-                .context("Invalid ANKITUI_MAX_NEW_CARDS value")?;
+            config.daily.max_new_cards = max_new.parse().context("Invalid ANKITUI_MAX_NEW_CARDS value")?;
         }
 
         if let Ok(max_review) = std::env::var("ANKITUI_MAX_REVIEW_CARDS") {
-            config.daily.max_review_cards = max_review
-                .parse()
-                .context("Invalid ANKITUI_MAX_REVIEW_CARDS value")?;
+            config.daily.max_review_cards = max_review.parse().context("Invalid ANKITUI_MAX_REVIEW_CARDS value")?;
         }
 
         // UI settings
@@ -113,9 +109,7 @@ impl Config {
         }
 
         if let Ok(max_interval) = std::env::var("ANKITUI_MAX_INTERVAL") {
-            config.scheduler.max_interval = max_interval
-                .parse()
-                .context("Invalid ANKITUI_MAX_INTERVAL value")?;
+            config.scheduler.max_interval = max_interval.parse().context("Invalid ANKITUI_MAX_INTERVAL value")?;
         }
 
         // Backup settings
@@ -126,9 +120,7 @@ impl Config {
         }
 
         if let Ok(backup_count) = std::env::var("ANKITUI_BACKUP_COUNT") {
-            config.data.backup_count = backup_count
-                .parse()
-                .context("Invalid ANKITUI_BACKUP_COUNT value")?;
+            config.data.backup_count = backup_count.parse().context("Invalid ANKITUI_BACKUP_COUNT value")?;
         }
 
         Ok(())
@@ -140,13 +132,11 @@ impl Config {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create config directory: {}", parent.display())
-            })?;
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
         }
 
-        let content =
-            toml::to_string_pretty(self).context("Failed to serialize config for export")?;
+        let content = toml::to_string_pretty(self).context("Failed to serialize config for export")?;
 
         std::fs::write(path, content)
             .with_context(|| format!("Failed to write exported config file: {}", path.display()))?;
@@ -160,9 +150,8 @@ impl Config {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create config directory: {}", parent.display())
-            })?;
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
         }
 
         let comments = self.generate_config_comments();
@@ -250,23 +239,20 @@ rate_easy = "{}"
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create config directory: {}", parent.display())
-            })?;
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create config directory: {}", parent.display()))?;
         }
 
         let content = toml::to_string_pretty(self).context("Failed to serialize config")?;
 
-        std::fs::write(path, content)
-            .with_context(|| format!("Failed to write config file: {}", path.display()))?;
+        std::fs::write(path, content).with_context(|| format!("Failed to write config file: {}", path.display()))?;
 
         Ok(())
     }
 
     /// Get default configuration file path
     pub fn default_path() -> Result<PathBuf> {
-        let config_dir =
-            dirs::config_dir().ok_or_else(|| anyhow::anyhow!("Could not find config directory"))?;
+        let config_dir = dirs::config_dir().ok_or_else(|| anyhow::anyhow!("Could not find config directory"))?;
 
         Ok(config_dir.join("ankitui").join("config.toml"))
     }

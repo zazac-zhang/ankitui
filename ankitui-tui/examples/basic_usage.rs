@@ -2,13 +2,13 @@
 //!
 //! Demonstrates how to properly use the Core package API through the service layer
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use ankitui_core::data::models::{CardContent, Rating};
 use ankitui_tui_v2::{
     app::{App, AppConfig, AppController},
-    ui::{state::Screen, event::Command, CommandType},
+    ui::{event::Command, state::Screen, CommandType},
 };
-use ankitui_core::data::models::{CardContent, Rating};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -35,7 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 2: Create a new deck
     println!("\n➕ Creating new deck...");
     let deck_name = "Example Deck".to_string();
-    let deck_id = controller.create_deck(deck_name.clone(), Some("Example deck for testing".to_string())).await?;
+    let deck_id = controller
+        .create_deck(deck_name.clone(), Some("Example deck for testing".to_string()))
+        .await?;
     println!("Created deck '{}' with ID: {}", deck_name, deck_id);
 
     // Example 3: Add cards to the deck

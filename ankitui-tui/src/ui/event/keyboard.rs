@@ -41,13 +41,11 @@ impl KeyEvent {
     }
 
     pub fn is_ctrl_char(&self, c: char) -> bool {
-        matches!(self.key_code, KeyCode::Char(k) if k == c)
-            && self.modifiers.contains(KeyModifiers::CONTROL)
+        matches!(self.key_code, KeyCode::Char(k) if k == c) && self.modifiers.contains(KeyModifiers::CONTROL)
     }
 
     pub fn is_alt_char(&self, c: char) -> bool {
-        matches!(self.key_code, KeyCode::Char(k) if k == c)
-            && self.modifiers.contains(KeyModifiers::ALT)
+        matches!(self.key_code, KeyCode::Char(k) if k == c) && self.modifiers.contains(KeyModifiers::ALT)
     }
 
     pub fn is_function_key(&self, n: u8) -> bool {

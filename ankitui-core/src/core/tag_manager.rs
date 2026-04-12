@@ -102,11 +102,7 @@ impl TagManager {
     /// Get all tags
     pub fn get_all_tags(&self) -> Vec<&Tag> {
         let mut tags: Vec<&Tag> = self.tags.values().collect();
-        tags.sort_by(|a, b| {
-            b.priority
-                .cmp(&a.priority)
-                .then_with(|| a.name.cmp(&b.name))
-        });
+        tags.sort_by(|a, b| b.priority.cmp(&a.priority).then_with(|| a.name.cmp(&b.name)));
         tags
     }
 
@@ -174,8 +170,7 @@ impl TagManager {
 
         // Remove tags that are no longer used
         self.tags.retain(|tag_name, _| tag_names.contains(tag_name));
-        self.tag_stats
-            .retain(|tag_name, _| tag_names.contains(tag_name));
+        self.tag_stats.retain(|tag_name, _| tag_names.contains(tag_name));
 
         self.update_hierarchy();
 
@@ -326,18 +321,13 @@ impl TagManager {
 
             // Simplified retention calculation
             if card.state.reps > 0 {
-                let success_rate =
-                    (card.state.reps - card.state.lapses) as f32 / card.state.reps as f32;
+                let success_rate = (card.state.reps - card.state.lapses) as f32 / card.state.reps as f32;
                 correct_responses += (card.state.reps - card.state.lapses);
                 total_responses += card.state.reps;
             }
 
             if card.state.due
-                > last_used.unwrap_or_else(|| {
-                    DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
-                        .unwrap()
-                        .into()
-                })
+                > last_used.unwrap_or_else(|| DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z").unwrap().into())
             {
                 last_used = Some(card.state.due);
             }
@@ -414,10 +404,7 @@ impl TagManager {
 
     /// Get child tags for a tag
     fn get_child_tags(&self, tag_name: &str) -> Vec<String> {
-        self.tag_hierarchy
-            .get(tag_name)
-            .cloned()
-            .unwrap_or_default()
+        self.tag_hierarchy.get(tag_name).cloned().unwrap_or_default()
     }
 
     /// Build tag hierarchy node
@@ -652,8 +639,7 @@ mod tests {
         assert_eq!(red_tags.len(), 1);
         assert_eq!(red_tags[0].name, "important");
 
-        let high_priority_tags =
-            tag_manager.get_tags_by_filter(&TagFilter::ByPriority(TagPriority::High));
+        let high_priority_tags = tag_manager.get_tags_by_filter(&TagFilter::ByPriority(TagPriority::High));
         assert_eq!(high_priority_tags.len(), 1);
     }
 

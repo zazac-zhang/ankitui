@@ -3,7 +3,13 @@
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
 use ankitui_core::data::models::Deck;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 
 /// Deck browsing screen
 pub struct DeckScreen {
@@ -60,12 +66,15 @@ impl DeckScreen {
 
 impl Component for DeckScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
-        let items: Vec<ListItem> = self.decks
+        let items: Vec<ListItem> = self
+            .decks
             .iter()
             .enumerate()
             .map(|(i, deck)| {
                 let style = if i == self.selected_index {
-                    Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(ratatui::style::Modifier::BOLD)
                 } else {
                     Style::default()
                 };
@@ -82,8 +91,7 @@ impl Component for DeckScreen {
             })
             .collect();
 
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Select a Deck"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Select a Deck"));
 
         f.render_widget(list, area);
 
@@ -96,8 +104,7 @@ impl Component for DeckScreen {
             };
 
             let help_text = "↑↓: Navigate | Enter: Study | C: Create | E: Edit | D: Delete | Esc: Back";
-            let help = Paragraph::new(help_text)
-                .style(Style::default().fg(Color::Cyan));
+            let help = Paragraph::new(help_text).style(Style::default().fg(Color::Cyan));
 
             f.render_widget(help, help_area);
         }

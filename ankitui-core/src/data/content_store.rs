@@ -29,8 +29,7 @@ impl ContentStore {
         let base_dir = base_dir.as_ref().to_path_buf();
 
         // Ensure base directory exists
-        fs::create_dir_all(&base_dir)
-            .with_context(|| format!("Failed to create content directory: {:?}", base_dir))?;
+        fs::create_dir_all(&base_dir).with_context(|| format!("Failed to create content directory: {:?}", base_dir))?;
 
         Ok(Self { base_dir })
     }
@@ -52,12 +51,10 @@ impl ContentStore {
             cards: cards.to_vec(),
         };
 
-        let toml_content =
-            toml::to_string_pretty(&deck_file).context("Failed to serialize deck to TOML")?;
+        let toml_content = toml::to_string_pretty(&deck_file).context("Failed to serialize deck to TOML")?;
 
         let file_path = self.deck_file_path(&deck.uuid);
-        fs::write(&file_path, toml_content)
-            .with_context(|| format!("Failed to write deck file: {:?}", file_path))?;
+        fs::write(&file_path, toml_content).with_context(|| format!("Failed to write deck file: {:?}", file_path))?;
 
         // Update name index
         self.update_deck_name_index(deck.uuid, &deck.name)?;
@@ -73,8 +70,8 @@ impl ContentStore {
             return Err(anyhow::anyhow!("Deck file not found: {:?}", file_path));
         }
 
-        let content = fs::read_to_string(&file_path)
-            .with_context(|| format!("Failed to read deck file: {:?}", file_path))?;
+        let content =
+            fs::read_to_string(&file_path).with_context(|| format!("Failed to read deck file: {:?}", file_path))?;
 
         let deck_file: DeckFile = toml::from_str(&content)
             .with_context(|| format!("Failed to parse TOML from deck file: {:?}", file_path))?;
@@ -122,8 +119,7 @@ impl ContentStore {
         let file_path = self.deck_file_path(deck_uuid);
 
         if file_path.exists() {
-            fs::remove_file(&file_path)
-                .with_context(|| format!("Failed to remove deck file: {:?}", file_path))?;
+            fs::remove_file(&file_path).with_context(|| format!("Failed to remove deck file: {:?}", file_path))?;
         }
 
         // Remove from name index
@@ -139,8 +135,7 @@ impl ContentStore {
 
         index.insert(deck_name.to_string(), deck_uuid);
 
-        let toml_content =
-            toml::to_string_pretty(&index).context("Failed to serialize deck index to TOML")?;
+        let toml_content = toml::to_string_pretty(&index).context("Failed to serialize deck index to TOML")?;
 
         fs::write(&index_path, toml_content)
             .with_context(|| format!("Failed to write deck index file: {:?}", index_path))?;
@@ -156,8 +151,7 @@ impl ContentStore {
         // Find and remove the entry with matching UUID
         index.retain(|_, &mut uuid| uuid != *deck_uuid);
 
-        let toml_content =
-            toml::to_string_pretty(&index).context("Failed to serialize deck index to TOML")?;
+        let toml_content = toml::to_string_pretty(&index).context("Failed to serialize deck index to TOML")?;
 
         fs::write(&index_path, toml_content)
             .with_context(|| format!("Failed to write deck index file: {:?}", index_path))?;
@@ -176,8 +170,8 @@ impl ContentStore {
         let content = fs::read_to_string(&index_path)
             .with_context(|| format!("Failed to read deck index file: {:?}", index_path))?;
 
-        let index: HashMap<String, Uuid> = toml::from_str(&content)
-            .with_context(|| format!("Failed to parse deck index TOML: {:?}", index_path))?;
+        let index: HashMap<String, Uuid> =
+            toml::from_str(&content).with_context(|| format!("Failed to parse deck index TOML: {:?}", index_path))?;
 
         Ok(index)
     }
@@ -196,14 +190,12 @@ impl ContentStore {
             return Err(anyhow::anyhow!("Deck file not found: {:?}", file_path));
         }
 
-        fs::read_to_string(&file_path)
-            .with_context(|| format!("Failed to read deck file: {:?}", file_path))
+        fs::read_to_string(&file_path).with_context(|| format!("Failed to read deck file: {:?}", file_path))
     }
 
     /// Import deck from TOML string
     pub fn import_deck_from_string(&self, toml_content: &str) -> Result<Uuid> {
-        let deck_file: DeckFile =
-            toml::from_str(toml_content).context("Failed to parse TOML content")?;
+        let deck_file: DeckFile = toml::from_str(toml_content).context("Failed to parse TOML content")?;
 
         // Validate that all cards belong to the deck
         for card in &deck_file.cards {
@@ -215,4 +207,3 @@ impl ContentStore {
         Ok(deck_file.deck.uuid)
     }
 }
-

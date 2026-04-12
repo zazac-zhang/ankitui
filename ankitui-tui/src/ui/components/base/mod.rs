@@ -128,10 +128,7 @@ impl ComponentState {
 
     pub fn contains_point(&self, x: u16, y: u16) -> bool {
         if let Some(bounds) = self.bounds {
-            x >= bounds.x
-                && x < bounds.x + bounds.width
-                && y >= bounds.y
-                && y < bounds.y + bounds.height
+            x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height
         } else {
             false
         }

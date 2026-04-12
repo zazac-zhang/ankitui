@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem, Row, Cell, Table}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table},
+    Frame,
+};
 use std::sync::Arc;
 
 /// Stats screen - main statistics hub
@@ -55,8 +60,7 @@ impl Component for StatsScreen {
             "3. 📈 Learning Progress - Retention and study trends",
         ];
         let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(*item)).collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Available Views"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Available Views"));
         f.render_widget(list, chunks[1]);
 
         let help = Paragraph::new("1-3: Select View | Esc: Back to Menu")
@@ -64,12 +68,24 @@ impl Component for StatsScreen {
             .block(Block::default().borders(Borders::ALL).title("Controls"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "stats_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> {
+        Ok(false)
+    }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "stats_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 impl GlobalStatsScreen {
@@ -143,11 +159,21 @@ impl Component for GlobalStatsScreen {
             _ => Ok(false),
         }
     }
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "global_stats_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "global_stats_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 impl DeckStatsScreen {
@@ -194,12 +220,15 @@ impl Component for DeckStatsScreen {
                     let cells = row.iter().map(|c| Cell::from(c.clone()));
                     Row::new(cells)
                 });
-                let table = Table::new(table_rows, [
-                    ratatui::layout::Constraint::Percentage(40),
-                    ratatui::layout::Constraint::Percentage(20),
-                    ratatui::layout::Constraint::Percentage(20),
-                    ratatui::layout::Constraint::Percentage(20),
-                ])
+                let table = Table::new(
+                    table_rows,
+                    [
+                        ratatui::layout::Constraint::Percentage(40),
+                        ratatui::layout::Constraint::Percentage(20),
+                        ratatui::layout::Constraint::Percentage(20),
+                        ratatui::layout::Constraint::Percentage(20),
+                    ],
+                )
                 .header(Row::new(header_cells))
                 .block(Block::default().borders(Borders::ALL).title("Deck Performance"));
                 f.render_widget(table, chunks[1]);
@@ -235,11 +264,21 @@ impl Component for DeckStatsScreen {
             _ => Ok(false),
         }
     }
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "deck_stats_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "deck_stats_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 /// Learning progress screen with interactive stats
@@ -319,10 +358,23 @@ impl Component for ProgressScreen {
             ])
             .split(area);
 
-        let tab_bar = format!("  {}  |  {}  |  {}  ",
-            if self.selected_tab == 0 { "[Overview]" } else { " Overview " },
-            if self.selected_tab == 1 { "[Retention]" } else { " Retention " },
-            if self.selected_tab == 2 { "[Forecast]" } else { " Forecast " },
+        let tab_bar = format!(
+            "  {}  |  {}  |  {}  ",
+            if self.selected_tab == 0 {
+                "[Overview]"
+            } else {
+                " Overview "
+            },
+            if self.selected_tab == 1 {
+                "[Retention]"
+            } else {
+                " Retention "
+            },
+            if self.selected_tab == 2 {
+                "[Forecast]"
+            } else {
+                " Forecast "
+            },
         );
         let header = Paragraph::new(tab_bar)
             .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
@@ -334,19 +386,16 @@ impl Component for ProgressScreen {
                 // Overview tab
                 let pct = if self.total_cards > 0 {
                     (self.learned_cards as f32 / self.total_cards as f32 * 100.0).min(100.0)
-                } else { 0.0 };
+                } else {
+                    0.0
+                };
                 format!(
                     "Cards Studied Today: {}\n\
                      Total Cards: {}\n\
                      Learned Cards: {} ({:.0}%)\n\
                      Study Streak: {} days\n\n\
                      ████████████████████  {:.0}% complete",
-                    self.cards_studied_today,
-                    self.total_cards,
-                    self.learned_cards,
-                    pct,
-                    self.study_streak,
-                    pct,
+                    self.cards_studied_today, self.total_cards, self.learned_cards, pct, self.study_streak, pct,
                 )
             }
             1 => {
@@ -380,9 +429,11 @@ impl Component for ProgressScreen {
             _ => String::new(),
         };
 
-        let content_para = Paragraph::new(content)
-            .style(Style::default())
-            .block(Block::default().borders(Borders::ALL).title(PROGRESS_TABS[self.selected_tab]));
+        let content_para = Paragraph::new(content).style(Style::default()).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(PROGRESS_TABS[self.selected_tab]),
+        );
         f.render_widget(content_para, chunks[1]);
 
         let help = Paragraph::new("←→: Switch tab | R: Refresh | Esc: Back")
@@ -417,9 +468,19 @@ impl Component for ProgressScreen {
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "progress_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "progress_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

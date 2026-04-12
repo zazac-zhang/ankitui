@@ -565,9 +565,7 @@ impl CliApp {
                     self.print_info("Available decks:");
                     let decks = deck_manager.get_all_decks().await?;
                     if decks.is_empty() {
-                        self.print_info(
-                            "  No decks found. Use 'ankitui deck --create <name>' to create one.",
-                        );
+                        self.print_info("  No decks found. Use 'ankitui deck --create <name>' to create one.");
                     } else {
                         for (d, _) in decks {
                             self.print_info(&format!("  - {}", d.name));
@@ -580,9 +578,7 @@ impl CliApp {
             // Show deck selection if no specific deck requested
             let decks = deck_manager.get_all_decks().await?;
             if decks.is_empty() {
-                self.print_info(
-                    "No decks found. Use 'ankitui deck --create <name>' to create one.",
-                );
+                self.print_info("No decks found. Use 'ankitui deck --create <name>' to create one.");
                 return Ok(1);
             } else if decks.len() == 1 {
                 let (deck, _) = &decks[0];
@@ -600,9 +596,7 @@ impl CliApp {
                         stats.due_cards
                     ));
                 }
-                self.print_info(
-                    "Use 'ankitui review --deck <deck_name>' to select a specific deck.",
-                );
+                self.print_info("Use 'ankitui review --deck <deck_name>' to select a specific deck.");
                 return Ok(1);
             }
         };
@@ -630,10 +624,7 @@ impl CliApp {
             total_available_i32
         };
 
-        self.print_info(&format!(
-            "Session setup: {} cards to review",
-            effective_limit
-        ));
+        self.print_info(&format!("Session setup: {} cards to review", effective_limit));
         self.print_info(&format!("  Due cards: {}", stats.due_cards));
         self.print_info(&format!("  New cards: {}", stats.new_cards));
 
@@ -717,8 +708,8 @@ impl CliApp {
             }
 
             // Read the import file
-            let import_content = std::fs::read_to_string(input)
-                .with_context(|| format!("Failed to read import file: {:?}", input))?;
+            let import_content =
+                std::fs::read_to_string(input).with_context(|| format!("Failed to read import file: {:?}", input))?;
 
             // Check if deck already exists
             if !overwrite {
@@ -733,8 +724,7 @@ impl CliApp {
             }
 
             // Parse the TOML content to get card information before import
-            let preview_result: Result<toml::Value, toml::de::Error> =
-                toml::from_str(&import_content);
+            let preview_result: Result<toml::Value, toml::de::Error> = toml::from_str(&import_content);
             if let Ok(toml_value) = preview_result {
                 if let Some(cards) = toml_value.get("cards").and_then(|c| c.as_array()) {
                     self.print_info(&format!("Found {} cards in import file", cards.len()));
@@ -748,17 +738,9 @@ impl CliApp {
                                 front.to_string()
                             };
 
-                            let card_id = card_value
-                                .get("id")
-                                .and_then(|id| id.as_str())
-                                .unwrap_or("unknown");
+                            let card_id = card_value.get("id").and_then(|id| id.as_str()).unwrap_or("unknown");
 
-                            self.print_info(&format!(
-                                "  Card {}: {} - {}",
-                                i + 1,
-                                card_id,
-                                front_preview
-                            ));
+                            self.print_info(&format!("  Card {}: {} - {}", i + 1, card_id, front_preview));
                         }
                     }
                 } else {
@@ -787,9 +769,7 @@ impl CliApp {
                     .await
                     .context("Failed to import JSON deck")?,
                 crate::util::cli::ImportFormat::Apkg => {
-                    return Err(anyhow::anyhow!(
-                        "Anki package format import not yet implemented"
-                    ));
+                    return Err(anyhow::anyhow!("Anki package format import not yet implemented"));
                 }
             };
 
@@ -800,16 +780,10 @@ impl CliApp {
                     .rename_deck(&deck_uuid, deck.clone())
                     .await
                     .context("Failed to rename deck")?;
-                self.print_info(&format!(
-                    "Renamed deck from '{}' to '{}'",
-                    imported_deck.name, deck
-                ));
+                self.print_info(&format!("Renamed deck from '{}' to '{}'", imported_deck.name, deck));
             }
 
-            self.print_info(&format!(
-                "Successfully imported deck '{}' (UUID: {})",
-                deck, deck_uuid
-            ));
+            self.print_info(&format!("Successfully imported deck '{}' (UUID: {})", deck, deck_uuid));
             self.print_info(&format!("Deck now contains {} cards", cards.len()));
 
             return Ok(0);
@@ -848,9 +822,7 @@ impl CliApp {
 
             match format {
                 crate::util::cli::ExportFormat::Toml => {
-                    let export_data = deck_manager
-                        .export_deck(&deck_uuid, *include_states)
-                        .await?;
+                    let export_data = deck_manager.export_deck(&deck_uuid, *include_states).await?;
                     let filename = format!("{}.toml", deck.as_ref().unwrap());
                     std::fs::write(&filename, export_data)?;
                     self.print_info(&format!("Deck exported to: {}", filename));
@@ -924,14 +896,9 @@ impl CliApp {
                 // self.print_info(&format!("  Relearning cards: {}", stats.relearning_cards)); // Not available in DeckStats
 
                 // Calculate additional stats
-                let mature_cards = stats
-                    .total_cards
-                    .saturating_sub(stats.new_cards + stats.learning_cards);
+                let mature_cards = stats.total_cards.saturating_sub(stats.new_cards + stats.learning_cards);
                 self.print_info(&format!("  Mature cards: {}", mature_cards));
-                self.print_info(&format!(
-                    "  Average ease factor: {:.1}",
-                    stats.average_ease_factor
-                ));
+                self.print_info(&format!("  Average ease factor: {:.1}", stats.average_ease_factor));
 
                 if let Some(retention) = stats.retention_rate {
                     self.print_info(&format!("  Retention rate: {:.1}%", retention * 100.0));
@@ -1002,43 +969,33 @@ impl CliApp {
             // Handle deck configuration editing
             if *deck_config {
                 self.print_info("Opening deck configuration editor...");
-                self.edit_deck_config(&target_deck.uuid, deck_manager)
-                    .await?;
+                self.edit_deck_config(&target_deck.uuid, deck_manager).await?;
             }
 
             // Handle adding new cards
             if *add_cards {
                 self.print_info("Starting interactive card addition...");
-                self.add_cards_interactive(&target_deck.uuid, deck_manager)
-                    .await?;
+                self.add_cards_interactive(&target_deck.uuid, deck_manager).await?;
             }
 
             // Handle browsing existing cards
             if *browse_cards {
                 self.print_info("Browsing existing cards...");
-                self.browse_cards(&target_deck.uuid, cards, deck_manager)
-                    .await?;
+                self.browse_cards(&target_deck.uuid, cards, deck_manager).await?;
             }
 
             // Handle editing specific card by ID
             if let Some(id) = card_id {
                 self.print_info(&format!("Editing card: {}", id));
-                self.edit_card_by_id(&target_deck.uuid, id, deck_manager)
-                    .await?;
+                self.edit_card_by_id(&target_deck.uuid, id, deck_manager).await?;
             }
 
             // Handle batch editing
             if *batch {
                 if let (Some(field_name), Some(find_text), Some(replace_text)) = (field, find, replace) {
                     self.print_info("Starting batch edit...");
-                    self.batch_edit_cards(
-                        &target_deck.uuid,
-                        deck_manager,
-                        field_name,
-                        find_text,
-                        replace_text,
-                    )
-                    .await?;
+                    self.batch_edit_cards(&target_deck.uuid, deck_manager, field_name, find_text, replace_text)
+                        .await?;
                 } else {
                     self.print_error("Batch edit requires --field, --find, and --replace options");
                     return Ok(1);
@@ -1048,13 +1005,11 @@ impl CliApp {
             // Handle card search
             if let Some(query) = search {
                 self.print_info(&format!("Searching cards with query: {}", query));
-                self.search_cards(&target_deck.uuid, query, deck_manager)
-                    .await?;
+                self.search_cards(&target_deck.uuid, query, deck_manager).await?;
             }
 
             // If no specific action, show deck info and options
-            if !deck_config && !add_cards && !browse_cards && search.is_none()
-                && card_id.is_none() && !batch {
+            if !deck_config && !add_cards && !browse_cards && search.is_none() && card_id.is_none() && !batch {
                 self.show_deck_info(&target_deck, cards).await?;
                 self.print_info("Available options:");
                 self.print_info("  --deck-config: Edit deck configuration");
@@ -1072,11 +1027,7 @@ impl CliApp {
     }
 
     /// Edit deck configuration
-    async fn edit_deck_config(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        deck_manager: &DeckManager,
-    ) -> Result<()> {
+    async fn edit_deck_config(&self, deck_uuid: &uuid::Uuid, deck_manager: &DeckManager) -> Result<()> {
         let (deck, _) = deck_manager.get_deck(deck_uuid).await?;
 
         self.print_info(&format!("Current configuration for deck: {}", deck.name));
@@ -1103,36 +1054,22 @@ impl CliApp {
             self.print_info("Using default scheduler configuration");
         }
 
-        self.print_info(
-            "Note: Interactive configuration editing will be implemented in a future version.",
-        );
-        self.print_info(
-            "For now, you can export the deck, edit the TOML file, and import it back.",
-        );
+        self.print_info("Note: Interactive configuration editing will be implemented in a future version.");
+        self.print_info("For now, you can export the deck, edit the TOML file, and import it back.");
 
         Ok(())
     }
 
     /// Edit card by ID
-    async fn edit_card_by_id(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        card_id: &str,
-        deck_manager: &DeckManager,
-    ) -> Result<()> {
+    async fn edit_card_by_id(&self, deck_uuid: &uuid::Uuid, card_id: &str, deck_manager: &DeckManager) -> Result<()> {
         // Parse card ID
-        let card_uuid = uuid::Uuid::parse_str(card_id)
-            .map_err(|_| anyhow::anyhow!("Invalid card ID format"))?;
+        let card_uuid = uuid::Uuid::parse_str(card_id).map_err(|_| anyhow::anyhow!("Invalid card ID format"))?;
 
         self.edit_card_interactive(deck_uuid, &card_uuid, deck_manager).await
     }
 
     /// Add cards interactively
-    async fn add_cards_interactive(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        deck_manager: &DeckManager,
-    ) -> Result<()> {
+    async fn add_cards_interactive(&self, deck_uuid: &uuid::Uuid, deck_manager: &DeckManager) -> Result<()> {
         self.print_info("Interactive card addition");
         self.print_info("Enter 'quit' or 'exit' to stop adding cards");
 
@@ -1163,10 +1100,7 @@ impl CliApp {
             let tags: Vec<String> = if tags_input.trim().is_empty() {
                 Vec::new()
             } else {
-                tags_input
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .collect()
+                tags_input.split(',').map(|s| s.trim().to_string()).collect()
             };
 
             // Create the card
@@ -1182,9 +1116,7 @@ impl CliApp {
             };
 
             // Add card to deck
-            deck_manager
-                .add_cards(deck_uuid, vec![card_content])
-                .await?;
+            deck_manager.add_cards(deck_uuid, vec![card_content]).await?;
             card_count += 1;
 
             self.print_info(&format!("✓ Card #{} added successfully", card_count));
@@ -1204,7 +1136,9 @@ impl CliApp {
         let (deck, mut cards) = deck_manager.get_deck(deck_uuid).await?;
 
         // Find the card to edit
-        let card_index = cards.iter().position(|c| c.content.id == *card_id)
+        let card_index = cards
+            .iter()
+            .position(|c| c.content.id == *card_id)
             .ok_or_else(|| anyhow::anyhow!("Card not found in deck"))?;
 
         let card = &cards[card_index];
@@ -1238,10 +1172,7 @@ impl CliApp {
         let tags = if new_tags.trim().is_empty() {
             card.content.tags.clone()
         } else {
-            new_tags
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect()
+            new_tags.split(',').map(|s| s.trim().to_string()).collect()
         };
 
         // Create updated card content
@@ -1303,7 +1234,8 @@ impl CliApp {
                     }
                 }
                 "tags" => {
-                    updated_content.tags = updated_content.tags
+                    updated_content.tags = updated_content
+                        .tags
                         .iter()
                         .map(|tag| {
                             if tag.contains(find_value) {
@@ -1338,12 +1270,7 @@ impl CliApp {
     }
 
     /// Browse and edit existing cards
-    async fn browse_cards(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        cards: &[Card],
-        deck_manager: &DeckManager,
-    ) -> Result<()> {
+    async fn browse_cards(&self, deck_uuid: &uuid::Uuid, cards: &[Card], deck_manager: &DeckManager) -> Result<()> {
         if cards.is_empty() {
             self.print_info("No cards found in this deck");
             return Ok(());
@@ -1363,23 +1290,14 @@ impl CliApp {
             self.print_info(&format!("Repetitions: {}", card.state.reps));
         }
 
-        self.print_info(
-            "\nNote: Interactive card editing will be implemented in a future version.",
-        );
-        self.print_info(
-            "For now, you can export the deck, edit the TOML file, and import it back.",
-        );
+        self.print_info("\nNote: Interactive card editing will be implemented in a future version.");
+        self.print_info("For now, you can export the deck, edit the TOML file, and import it back.");
 
         Ok(())
     }
 
     /// Search cards by query
-    async fn search_cards(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        query: &str,
-        deck_manager: &DeckManager,
-    ) -> Result<()> {
+    async fn search_cards(&self, deck_uuid: &uuid::Uuid, query: &str, deck_manager: &DeckManager) -> Result<()> {
         let (deck, cards) = deck_manager.get_deck(deck_uuid).await?;
 
         let query_lower = query.to_lowercase();
@@ -1401,11 +1319,7 @@ impl CliApp {
             return Ok(());
         }
 
-        self.print_info(&format!(
-            "Found {} cards matching '{}':",
-            matching_cards.len(),
-            query
-        ));
+        self.print_info(&format!("Found {} cards matching '{}':", matching_cards.len(), query));
 
         for (i, card) in matching_cards.iter().enumerate() {
             self.print_info(&format!("\n--- Result {} ---", i + 1));
@@ -1420,21 +1334,14 @@ impl CliApp {
     }
 
     /// Show deck information
-    async fn show_deck_info(
-        &self,
-        deck: &Deck,
-        cards: &[Card],
-    ) -> Result<()> {
+    async fn show_deck_info(&self, deck: &Deck, cards: &[Card]) -> Result<()> {
         self.print_info(&format!("Deck Information: {}", deck.name));
         self.print_info(&format!("UUID: {}", deck.uuid));
         self.print_info(&format!(
             "Description: {}",
             deck.description.as_deref().unwrap_or("None")
         ));
-        self.print_info(&format!(
-            "Created: {}",
-            deck.created_at.format("%Y-%m-%d %H:%M:%S UTC")
-        ));
+        self.print_info(&format!("Created: {}", deck.created_at.format("%Y-%m-%d %H:%M:%S UTC")));
         self.print_info(&format!(
             "Modified: {}",
             deck.modified_at.format("%Y-%m-%d %H:%M:%S UTC")
@@ -1442,10 +1349,7 @@ impl CliApp {
 
         // Card statistics
         let total_cards = cards.len();
-        let new_cards = cards
-            .iter()
-            .filter(|c| matches!(c.state.state, CardState::New))
-            .count();
+        let new_cards = cards.iter().filter(|c| matches!(c.state.state, CardState::New)).count();
         let learning_cards = cards
             .iter()
             .filter(|c| matches!(c.state.state, CardState::Learning))
@@ -1534,21 +1438,12 @@ impl CliApp {
         let config = self.config_manager.get_config();
         self.print_info("Current configuration:");
         println!("\n[Scheduler]");
-        println!(
-            "  Starting ease factor: {}",
-            config.scheduler.starting_ease_factor
-        );
+        println!("  Starting ease factor: {}", config.scheduler.starting_ease_factor);
         println!("  Easy bonus: {}", config.scheduler.easy_bonus);
-        println!(
-            "  Interval modifier: {}",
-            config.scheduler.interval_modifier
-        );
+        println!("  Interval modifier: {}", config.scheduler.interval_modifier);
         println!("  Easy interval: {} days", config.scheduler.easy_interval);
         println!("  Good interval: {} days", config.scheduler.good_interval);
-        println!(
-            "  Graduating interval: {} days",
-            config.scheduler.graduating_interval
-        );
+        println!("  Graduating interval: {} days", config.scheduler.graduating_interval);
         println!("  Maximum interval: {} days", config.scheduler.max_interval);
         println!(
             "  Initial failure interval: {} minutes",
@@ -1560,10 +1455,7 @@ impl CliApp {
         println!("  Max review cards: {}", config.daily.max_review_cards);
         println!("  Day start hour: {}", config.daily.day_start_hour);
         println!("  Day end hour: {}", config.daily.day_end_hour);
-        println!(
-            "  Show limit warnings: {}",
-            config.daily.show_limit_warnings
-        );
+        println!("  Show limit warnings: {}", config.daily.show_limit_warnings);
 
         println!("\n[UI]");
         println!("  Theme: {}", config.ui.theme);
@@ -1633,26 +1525,19 @@ impl CliApp {
         // Parse and set the configuration value
         match key {
             "scheduler.starting_ease_factor" | "starting_ease_factor" => {
-                config.scheduler.starting_ease_factor =
-                    value.parse().context("Invalid ease factor value")?;
+                config.scheduler.starting_ease_factor = value.parse().context("Invalid ease factor value")?;
             }
             "scheduler.easy_bonus" | "easy_bonus" => {
                 config.scheduler.easy_bonus = value.parse().context("Invalid easy bonus value")?;
             }
             "scheduler.learning_steps" | "learning_steps" => {
-                config.scheduler.learning_steps = value
-                    .split(',')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
+                config.scheduler.learning_steps = value.split(',').filter_map(|s| s.trim().parse().ok()).collect();
                 if config.scheduler.learning_steps.is_empty() {
                     return Err(anyhow::anyhow!("At least one learning step is required"));
                 }
             }
             "scheduler.relearning_steps" | "relearning_steps" => {
-                config.scheduler.relearning_steps = value
-                    .split(',')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
+                config.scheduler.relearning_steps = value.split(',').filter_map(|s| s.trim().parse().ok()).collect();
                 if config.scheduler.relearning_steps.is_empty() {
                     return Err(anyhow::anyhow!("At least one relearning step is required"));
                 }
@@ -1662,62 +1547,46 @@ impl CliApp {
                     value.parse().context("Invalid graduating interval value")?;
             }
             "scheduler.easy_interval_days" | "easy_interval" => {
-                config.scheduler.easy_interval_days =
-                    value.parse().context("Invalid easy interval value")?;
+                config.scheduler.easy_interval_days = value.parse().context("Invalid easy interval value")?;
             }
             "scheduler.min_ease_factor" | "min_ease_factor" => {
-                config.scheduler.min_ease_factor =
-                    value.parse().context("Invalid minimum ease factor value")?;
+                config.scheduler.min_ease_factor = value.parse().context("Invalid minimum ease factor value")?;
             }
             "scheduler.max_ease_factor" | "max_ease_factor" => {
-                config.scheduler.max_ease_factor =
-                    value.parse().context("Invalid maximum ease factor value")?;
+                config.scheduler.max_ease_factor = value.parse().context("Invalid maximum ease factor value")?;
             }
             "scheduler.hard_multiplier" | "hard_multiplier" => {
-                config.scheduler.hard_multiplier =
-                    value.parse().context("Invalid hard multiplier value")?;
+                config.scheduler.hard_multiplier = value.parse().context("Invalid hard multiplier value")?;
             }
             "scheduler.interval_modifier" | "interval_modifier" => {
-                config.scheduler.interval_modifier =
-                    value.parse().context("Invalid interval modifier value")?;
+                config.scheduler.interval_modifier = value.parse().context("Invalid interval modifier value")?;
             }
             "daily.max_new_cards" | "max_new_cards" | "new_cards_per_day" => {
-                config.daily.max_new_cards =
-                    value.parse().context("Invalid max new cards value")?;
+                config.daily.max_new_cards = value.parse().context("Invalid max new cards value")?;
             }
             "daily.max_review_cards" | "max_review_cards" | "max_reviews_per_day" => {
-                config.daily.max_review_cards =
-                    value.parse().context("Invalid max review cards value")?;
+                config.daily.max_review_cards = value.parse().context("Invalid max review cards value")?;
             }
             "ui.theme" | "theme" => {
                 config.ui.theme = value.parse().context("Invalid theme value")?;
             }
             "ui.show_progress" | "show_progress" => {
-                config.ui.show_progress = value
-                    .parse()
-                    .context("Invalid boolean value for show_progress")?;
+                config.ui.show_progress = value.parse().context("Invalid boolean value for show_progress")?;
             }
             "ui.show_card_counter" | "show_card_counter" => {
-                config.ui.show_card_counter = value
-                    .parse()
-                    .context("Invalid boolean value for show_card_counter")?;
+                config.ui.show_card_counter = value.parse().context("Invalid boolean value for show_card_counter")?;
             }
             "data.backup_count" | "backup_count" => {
                 config.data.backup_count = value.parse().context("Invalid backup count value")?;
             }
             "data.backup_interval" | "backup_interval" => {
-                config.data.backup_interval =
-                    value.parse().context("Invalid backup interval value")?;
+                config.data.backup_interval = value.parse().context("Invalid backup interval value")?;
             }
             "data.auto_backup" | "auto_backup" => {
-                config.data.auto_backup = value
-                    .parse()
-                    .context("Invalid boolean value for auto_backup")?;
+                config.data.auto_backup = value.parse().context("Invalid boolean value for auto_backup")?;
             }
             "data.compress_data" | "compress_data" => {
-                config.data.compress_data = value
-                    .parse()
-                    .context("Invalid boolean value for compress_data")?;
+                config.data.compress_data = value.parse().context("Invalid boolean value for compress_data")?;
             }
             _ => {
                 self.print_error(&format!("Unknown configuration key: {}", key));
@@ -1774,9 +1643,7 @@ impl CliApp {
                 config.scheduler.starting_ease_factor.to_string()
             }
             "scheduler.easy_bonus" | "easy_bonus" => config.scheduler.easy_bonus.to_string(),
-            "daily.max_new_cards" | "max_new_cards" | "new_cards_per_day" => {
-                config.daily.max_new_cards.to_string()
-            }
+            "daily.max_new_cards" | "max_new_cards" | "new_cards_per_day" => config.daily.max_new_cards.to_string(),
             "daily.max_review_cards" | "max_review_cards" | "max_reviews_per_day" => {
                 config.daily.max_review_cards.to_string()
             }
@@ -1806,17 +1673,9 @@ impl CliApp {
         // Check if EDITOR environment variable is set
         let editor = std::env::var("EDITOR").unwrap_or_else(|_| {
             // Try common editors
-            if std::process::Command::new("nano")
-                .arg("--version")
-                .output()
-                .is_ok()
-            {
+            if std::process::Command::new("nano").arg("--version").output().is_ok() {
                 "nano".to_string()
-            } else if std::process::Command::new("vim")
-                .arg("--version")
-                .output()
-                .is_ok()
-            {
+            } else if std::process::Command::new("vim").arg("--version").output().is_ok() {
                 "vim".to_string()
             } else {
                 "vi".to_string()
@@ -1873,9 +1732,7 @@ impl CliApp {
                 self.print_info("Available decks:");
                 let decks = deck_manager.get_all_decks().await?;
                 if decks.is_empty() {
-                    self.print_info(
-                        "  No decks found. Use 'ankitui deck --create <name>' to create one.",
-                    );
+                    self.print_info("  No decks found. Use 'ankitui deck --create <name>' to create one.");
                 } else {
                     for (deck, _cards) in decks {
                         let stats = deck_manager.get_deck_statistics(&deck.uuid).await?;
@@ -1889,10 +1746,7 @@ impl CliApp {
 
             if let Some(deck_name) = create {
                 self.print_info(&format!("Creating deck: {}", deck_name));
-                match deck_manager
-                    .create_deck(deck_name.clone(), None, None)
-                    .await
-                {
+                match deck_manager.create_deck(deck_name.clone(), None, None).await {
                     Ok(_) => self.print_info(&format!("Deck '{}' created successfully", deck_name)),
                     Err(e) => {
                         self.print_error(&format!("Failed to create deck: {}", e));
@@ -1906,9 +1760,7 @@ impl CliApp {
                 let decks = deck_manager.get_all_decks().await?;
                 if let Some((deck, _cards)) = decks.iter().find(|(d, _)| d.name == *deck_name) {
                     match deck_manager.delete_deck(&deck.uuid).await {
-                        Ok(_) => {
-                            self.print_info(&format!("Deck '{}' deleted successfully", deck_name))
-                        }
+                        Ok(_) => self.print_info(&format!("Deck '{}' deleted successfully", deck_name)),
                         Err(e) => {
                             self.print_error(&format!("Failed to delete deck: {}", e));
                             return Ok(1);
@@ -2007,8 +1859,7 @@ impl CliApp {
             }
 
             if let Some(backup_file) = restore {
-                self.restore_database(&backup_file, &db_path, data_dir)
-                    .await?;
+                self.restore_database(&backup_file, &db_path, data_dir).await?;
             }
 
             if *stats {
@@ -2023,11 +1874,15 @@ impl CliApp {
     /// Handle media command
     async fn handle_media(&self) -> Result<i32> {
         if let Some(Commands::Media { deck, action }) = &self.cli.command {
-            let deck_manager = self.deck_manager.as_ref()
+            let deck_manager = self
+                .deck_manager
+                .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("Deck manager not initialized"))?;
 
             // Find deck by name
-            let deck_result = deck_manager.find_deck_by_name(deck).await
+            let deck_result = deck_manager
+                .find_deck_by_name(deck)
+                .await
                 .map_err(|e| anyhow::anyhow!("Failed to find deck '{}': {}", deck, e))?;
 
             let deck_uuid = match deck_result {
@@ -2039,16 +1894,23 @@ impl CliApp {
             };
 
             match action {
-                MediaAction::Add { card_id, file_path, media_type } => {
-                    let card_uuid = uuid::Uuid::parse_str(card_id)
-                        .map_err(|e| anyhow::anyhow!("Invalid card ID: {}", e))?;
+                MediaAction::Add {
+                    card_id,
+                    file_path,
+                    media_type,
+                } => {
+                    let card_uuid =
+                        uuid::Uuid::parse_str(card_id).map_err(|e| anyhow::anyhow!("Invalid card ID: {}", e))?;
 
                     let media_type_enum = match media_type.to_lowercase().as_str() {
                         "audio" => MediaType::Audio,
                         "image" => MediaType::Image,
                         "video" => MediaType::Video,
                         _ => {
-                            self.print_error(&format!("Invalid media type: {}. Use: audio, image, or video", media_type));
+                            self.print_error(&format!(
+                                "Invalid media type: {}. Use: audio, image, or video",
+                                media_type
+                            ));
                             return Ok(1);
                         }
                     };
@@ -2058,7 +1920,10 @@ impl CliApp {
                         return Ok(1);
                     }
 
-                    match deck_manager.add_card_media(&deck_uuid, &card_uuid, file_path, media_type_enum).await {
+                    match deck_manager
+                        .add_card_media(&deck_uuid, &card_uuid, file_path, media_type_enum)
+                        .await
+                    {
                         Ok(()) => {
                             self.print_info(&format!("Successfully added media to card {}", card_id));
                             return Ok(0);
@@ -2071,8 +1936,8 @@ impl CliApp {
                 }
 
                 MediaAction::Remove { card_id } => {
-                    let card_uuid = uuid::Uuid::parse_str(card_id)
-                        .map_err(|e| anyhow::anyhow!("Invalid card ID: {}", e))?;
+                    let card_uuid =
+                        uuid::Uuid::parse_str(card_id).map_err(|e| anyhow::anyhow!("Invalid card ID: {}", e))?;
 
                     match deck_manager.remove_card_media(&deck_uuid, &card_uuid).await {
                         Ok(()) => {
@@ -2086,128 +1951,117 @@ impl CliApp {
                     }
                 }
 
-                MediaAction::List { detailed } => {
-                    match deck_manager.get_cards_with_media(&deck_uuid).await {
-                        Ok(cards) => {
-                            if cards.is_empty() {
-                                self.print_info("No media files found in this deck");
-                            } else {
-                                self.print_info(&format!("Found {} cards with media:", cards.len()));
-                                for card in cards {
-                                    if let Some(media_ref) = &card.content.media {
-                                        if *detailed {
-                                            self.print_info(&format!(
-                                                "  Card ID: {} | Type: {:?} | Path: {}",
-                                                card.content.id,
-                                                media_ref.media_type,
-                                                media_ref.path
-                                            ));
-                                        } else {
-                                            self.print_info(&format!(
-                                                "  Card ID: {} | Type: {:?}",
-                                                card.content.id,
-                                                media_ref.media_type
-                                            ));
-                                        }
-                                    }
-                                }
-                            }
-                            return Ok(0);
-                        }
-                        Err(e) => {
-                            self.print_error(&format!("Failed to list media: {}", e));
-                            return Ok(1);
-                        }
-                    }
-                }
-
-                MediaAction::Validate { fix } => {
-                    match deck_manager.validate_deck_media(&deck_uuid).await {
-                        Ok(results) => {
-                            if results.is_empty() {
-                                self.print_info("No media files to validate");
-                            } else {
-                                let mut valid_count = 0;
-                                let mut invalid_count = 0;
-                                self.print_info("Media validation results:");
-                                for (card_id, is_valid) in results {
-                                    if is_valid {
-                                        self.print_info(&format!("  Card {}: ✅ Valid", card_id));
-                                        valid_count += 1;
-                                    } else {
-                                        self.print_info(&format!("  Card {}: ❌ Invalid/Missing", card_id));
-                                        invalid_count += 1;
-                                    }
-                                }
-                                self.print_info(&format!("Summary: {} valid, {} invalid", valid_count, invalid_count));
-                            }
-                            return Ok(0);
-                        }
-                        Err(e) => {
-                            self.print_error(&format!("Failed to validate media: {}", e));
-                            return Ok(1);
-                        }
-                    }
-                }
-
-                MediaAction::Cleanup { dry_run } => {
-                    match deck_manager.cleanup_deck_media(&deck_uuid).await {
-                        Ok(cleaned_count) => {
-                            if *dry_run {
-                                self.print_info(&format!("Would clean up {} orphaned media files", cleaned_count));
-                            } else {
-                                self.print_info(&format!("Cleaned up {} orphaned media files", cleaned_count));
-                            }
-                            return Ok(0);
-                        }
-                        Err(e) => {
-                            self.print_error(&format!("Failed to cleanup media: {}", e));
-                            return Ok(1);
-                        }
-                    }
-                }
-
-                MediaAction::Stats { format } => {
-                    match deck_manager.get_deck_media_stats(&deck_uuid).await {
-                        Ok(stats) => {
-                            match format.as_str() {
-                                "json" => {
-                                    let json_output = serde_json::json!({
-                                        "total_media_files": stats.total_media_files,
-                                        "audio_files": stats.audio_files,
-                                        "image_files": stats.image_files,
-                                        "video_files": stats.video_files,
-                                        "total_size_bytes": stats.total_size_bytes,
-                                        "average_size_bytes": stats.average_size_bytes,
-                                    });
-                                    self.print_info(&serde_json::to_string_pretty(&json_output).unwrap());
-                                }
-                                _ => {
-                                    self.print_info("Media statistics:");
-                                    self.print_info(&format!("  Total media files: {}", stats.total_media_files));
-                                    self.print_info(&format!("  Audio files: {}", stats.audio_files));
-                                    self.print_info(&format!("  Image files: {}", stats.image_files));
-                                    self.print_info(&format!("  Video files: {}", stats.video_files));
-                                    self.print_info(&format!(
-                                        "  Total size: {:.2} MB",
-                                        stats.total_size_bytes as f64 / 1024.0 / 1024.0
-                                    ));
-                                    if stats.average_size_bytes > 0 {
+                MediaAction::List { detailed } => match deck_manager.get_cards_with_media(&deck_uuid).await {
+                    Ok(cards) => {
+                        if cards.is_empty() {
+                            self.print_info("No media files found in this deck");
+                        } else {
+                            self.print_info(&format!("Found {} cards with media:", cards.len()));
+                            for card in cards {
+                                if let Some(media_ref) = &card.content.media {
+                                    if *detailed {
                                         self.print_info(&format!(
-                                            "  Average size: {:.2} KB",
-                                            stats.average_size_bytes as f64 / 1024.0
+                                            "  Card ID: {} | Type: {:?} | Path: {}",
+                                            card.content.id, media_ref.media_type, media_ref.path
+                                        ));
+                                    } else {
+                                        self.print_info(&format!(
+                                            "  Card ID: {} | Type: {:?}",
+                                            card.content.id, media_ref.media_type
                                         ));
                                     }
                                 }
                             }
-                            return Ok(0);
                         }
-                        Err(e) => {
-                            self.print_error(&format!("Failed to get media stats: {}", e));
-                            return Ok(1);
-                        }
+                        return Ok(0);
                     }
-                }
+                    Err(e) => {
+                        self.print_error(&format!("Failed to list media: {}", e));
+                        return Ok(1);
+                    }
+                },
+
+                MediaAction::Validate { fix } => match deck_manager.validate_deck_media(&deck_uuid).await {
+                    Ok(results) => {
+                        if results.is_empty() {
+                            self.print_info("No media files to validate");
+                        } else {
+                            let mut valid_count = 0;
+                            let mut invalid_count = 0;
+                            self.print_info("Media validation results:");
+                            for (card_id, is_valid) in results {
+                                if is_valid {
+                                    self.print_info(&format!("  Card {}: ✅ Valid", card_id));
+                                    valid_count += 1;
+                                } else {
+                                    self.print_info(&format!("  Card {}: ❌ Invalid/Missing", card_id));
+                                    invalid_count += 1;
+                                }
+                            }
+                            self.print_info(&format!("Summary: {} valid, {} invalid", valid_count, invalid_count));
+                        }
+                        return Ok(0);
+                    }
+                    Err(e) => {
+                        self.print_error(&format!("Failed to validate media: {}", e));
+                        return Ok(1);
+                    }
+                },
+
+                MediaAction::Cleanup { dry_run } => match deck_manager.cleanup_deck_media(&deck_uuid).await {
+                    Ok(cleaned_count) => {
+                        if *dry_run {
+                            self.print_info(&format!("Would clean up {} orphaned media files", cleaned_count));
+                        } else {
+                            self.print_info(&format!("Cleaned up {} orphaned media files", cleaned_count));
+                        }
+                        return Ok(0);
+                    }
+                    Err(e) => {
+                        self.print_error(&format!("Failed to cleanup media: {}", e));
+                        return Ok(1);
+                    }
+                },
+
+                MediaAction::Stats { format } => match deck_manager.get_deck_media_stats(&deck_uuid).await {
+                    Ok(stats) => {
+                        match format.as_str() {
+                            "json" => {
+                                let json_output = serde_json::json!({
+                                    "total_media_files": stats.total_media_files,
+                                    "audio_files": stats.audio_files,
+                                    "image_files": stats.image_files,
+                                    "video_files": stats.video_files,
+                                    "total_size_bytes": stats.total_size_bytes,
+                                    "average_size_bytes": stats.average_size_bytes,
+                                });
+                                self.print_info(&serde_json::to_string_pretty(&json_output).unwrap());
+                            }
+                            _ => {
+                                self.print_info("Media statistics:");
+                                self.print_info(&format!("  Total media files: {}", stats.total_media_files));
+                                self.print_info(&format!("  Audio files: {}", stats.audio_files));
+                                self.print_info(&format!("  Image files: {}", stats.image_files));
+                                self.print_info(&format!("  Video files: {}", stats.video_files));
+                                self.print_info(&format!(
+                                    "  Total size: {:.2} MB",
+                                    stats.total_size_bytes as f64 / 1024.0 / 1024.0
+                                ));
+                                if stats.average_size_bytes > 0 {
+                                    self.print_info(&format!(
+                                        "  Average size: {:.2} KB",
+                                        stats.average_size_bytes as f64 / 1024.0
+                                    ));
+                                }
+                            }
+                        }
+                        return Ok(0);
+                    }
+                    Err(e) => {
+                        self.print_error(&format!("Failed to get media stats: {}", e));
+                        return Ok(1);
+                    }
+                },
             }
         }
         Ok(1)
@@ -2273,11 +2127,7 @@ impl CliApp {
     }
 
     /// Rebuild database
-    async fn rebuild_database(
-        &self,
-        db_path: &std::path::Path,
-        data_dir: &std::path::Path,
-    ) -> Result<()> {
+    async fn rebuild_database(&self, db_path: &std::path::Path, data_dir: &std::path::Path) -> Result<()> {
         self.print_info("Rebuilding database...");
         self.print_info("This will create a backup and rebuild the database from TOML files");
 
@@ -2293,25 +2143,18 @@ impl CliApp {
 
         // Export all decks to TOML first
         let temp_export_dir = data_dir.join("temp_export");
-        std::fs::create_dir_all(&temp_export_dir)
-            .context("Failed to create temporary export directory")?;
+        std::fs::create_dir_all(&temp_export_dir).context("Failed to create temporary export directory")?;
 
         // Note: This is a simplified rebuild. In a real implementation,
         // you would want to use the deck manager to export and import properly
         self.print_info("⚠️  Database rebuild is a complex operation.");
-        self.print_info(
-            "Consider exporting your decks manually and importing them into a fresh database.",
-        );
+        self.print_info("Consider exporting your decks manually and importing them into a fresh database.");
         self.print_info("Backup created successfully in case you want to proceed manually.");
         Ok(())
     }
 
     /// Backup database
-    async fn backup_database(
-        &self,
-        db_path: &std::path::Path,
-        data_dir: &std::path::Path,
-    ) -> Result<()> {
+    async fn backup_database(&self, db_path: &std::path::Path, data_dir: &std::path::Path) -> Result<()> {
         self.print_info("Creating database backup...");
 
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -2321,10 +2164,7 @@ impl CliApp {
         // Close any existing connections and copy the file
         std::fs::copy(db_path, &backup_path).context("Failed to copy database file")?;
 
-        self.print_info(&format!(
-            "✓ Database backed up to: {}",
-            backup_path.display()
-        ));
+        self.print_info(&format!("✓ Database backed up to: {}", backup_path.display()));
 
         // Also backup TOML content files
         let content_dir = data_dir.join("content");
@@ -2347,16 +2187,10 @@ impl CliApp {
         db_path: &std::path::Path,
         data_dir: &std::path::Path,
     ) -> Result<()> {
-        self.print_info(&format!(
-            "Restoring database from: {}",
-            backup_file.display()
-        ));
+        self.print_info(&format!("Restoring database from: {}", backup_file.display()));
 
         if !backup_file.exists() {
-            return Err(anyhow::anyhow!(
-                "Backup file not found: {}",
-                backup_file.display()
-            ));
+            return Err(anyhow::anyhow!("Backup file not found: {}", backup_file.display()));
         }
 
         // Create backup of current database before restoring
@@ -2433,10 +2267,7 @@ impl CliApp {
 
         self.print_info(&format!("  Page size: {} bytes", page_size.0));
         self.print_info(&format!("  Page count: {}", page_count.0));
-        self.print_info(&format!(
-            "  Database size: {} bytes",
-            page_size.0 * page_count.0
-        ));
+        self.print_info(&format!("  Database size: {} bytes", page_size.0 * page_count.0));
 
         pool.close().await;
         Ok(())
@@ -2454,8 +2285,7 @@ impl CliApp {
             if src_path.is_dir() {
                 self.backup_directory(&src_path, &dst_path)?;
             } else {
-                std::fs::copy(&src_path, &dst_path)
-                    .context(format!("Failed to copy file: {}", src_path.display()))?;
+                std::fs::copy(&src_path, &dst_path).context(format!("Failed to copy file: {}", src_path.display()))?;
             }
         }
 
@@ -2505,8 +2335,7 @@ impl CliApp {
         let mut reader = csv::Reader::from_reader(content.as_bytes());
 
         for (line_num, result) in reader.records().enumerate() {
-            let record =
-                result.with_context(|| format!("Failed to parse CSV line {}", line_num + 1))?;
+            let record = result.with_context(|| format!("Failed to parse CSV line {}", line_num + 1))?;
 
             if record.len() < 2 {
                 self.print_info(&format!(
@@ -2520,10 +2349,7 @@ impl CliApp {
             let back = record.get(1).unwrap_or("").trim();
 
             if front.is_empty() {
-                self.print_info(&format!(
-                    "Skipping line {} - empty front side",
-                    line_num + 1
-                ));
+                self.print_info(&format!("Skipping line {} - empty front side", line_num + 1));
                 continue;
             }
 
@@ -2559,9 +2385,7 @@ impl CliApp {
         }
 
         // Create deck and add cards
-        let deck_uuid = deck_manager
-            .create_deck(deck_name.to_string(), None, None)
-            .await?;
+        let deck_uuid = deck_manager.create_deck(deck_name.to_string(), None, None).await?;
         let cards_count = cards.len();
         deck_manager.add_cards(&deck_uuid, cards).await?;
 
@@ -2594,10 +2418,7 @@ impl CliApp {
             let back = fields[1].trim();
 
             if front.is_empty() {
-                self.print_info(&format!(
-                    "Skipping line {} - empty front side",
-                    line_num + 1
-                ));
+                self.print_info(&format!("Skipping line {} - empty front side", line_num + 1));
                 continue;
             }
 
@@ -2631,9 +2452,7 @@ impl CliApp {
         }
 
         // Create deck and add cards
-        let deck_uuid = deck_manager
-            .create_deck(deck_name.to_string(), None, None)
-            .await?;
+        let deck_uuid = deck_manager.create_deck(deck_name.to_string(), None, None).await?;
         let cards_count = cards.len();
         deck_manager.add_cards(&deck_uuid, cards).await?;
 
@@ -2663,8 +2482,7 @@ impl CliApp {
             cards: Vec<JsonCard>,
         }
 
-        let json_deck: JsonDeck =
-            serde_json::from_str(content).context("Failed to parse JSON file")?;
+        let json_deck: JsonDeck = serde_json::from_str(content).context("Failed to parse JSON file")?;
 
         if json_deck.cards.is_empty() {
             return Err(anyhow::anyhow!("No cards found in JSON file"));
@@ -2696,9 +2514,7 @@ impl CliApp {
         }
 
         // Create deck and add cards
-        let deck_uuid = deck_manager
-            .create_deck(deck_name.to_string(), None, None)
-            .await?;
+        let deck_uuid = deck_manager.create_deck(deck_name.to_string(), None, None).await?;
         let cards_count = cards.len();
         deck_manager.add_cards(&deck_uuid, cards).await?;
 
@@ -2707,12 +2523,7 @@ impl CliApp {
     }
 
     /// Export to CSV format
-    async fn export_csv(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        deck_name: &str,
-        include_states: bool,
-    ) -> Result<()> {
+    async fn export_csv(&self, deck_uuid: &uuid::Uuid, deck_name: &str, include_states: bool) -> Result<()> {
         let deck_manager = self
             .deck_manager
             .as_ref()
@@ -2760,21 +2571,12 @@ impl CliApp {
         }
 
         wtr.flush()?;
-        self.print_info(&format!(
-            "Exported {} cards to CSV: {}",
-            cards.len(),
-            filename
-        ));
+        self.print_info(&format!("Exported {} cards to CSV: {}", cards.len(), filename));
         Ok(())
     }
 
     /// Export to TSV format
-    async fn export_tsv(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        deck_name: &str,
-        include_states: bool,
-    ) -> Result<()> {
+    async fn export_tsv(&self, deck_uuid: &uuid::Uuid, deck_name: &str, include_states: bool) -> Result<()> {
         let deck_manager = self
             .deck_manager
             .as_ref()
@@ -2817,21 +2619,12 @@ impl CliApp {
             }
         }
 
-        self.print_info(&format!(
-            "Exported {} cards to TSV: {}",
-            cards.len(),
-            filename
-        ));
+        self.print_info(&format!("Exported {} cards to TSV: {}", cards.len(), filename));
         Ok(())
     }
 
     /// Export to JSON format
-    async fn export_json(
-        &self,
-        deck_uuid: &uuid::Uuid,
-        deck_name: &str,
-        include_states: bool,
-    ) -> Result<()> {
+    async fn export_json(&self, deck_uuid: &uuid::Uuid, deck_name: &str, include_states: bool) -> Result<()> {
         let deck_manager = self
             .deck_manager
             .as_ref()
@@ -2879,16 +2672,8 @@ impl CliApp {
                 } else {
                     None
                 },
-                reps: if include_states {
-                    Some(card.state.reps)
-                } else {
-                    None
-                },
-                lapses: if include_states {
-                    Some(card.state.lapses)
-                } else {
-                    None
-                },
+                reps: if include_states { Some(card.state.reps) } else { None },
+                lapses: if include_states { Some(card.state.lapses) } else { None },
                 state: if include_states {
                     Some(format!("{:?}", card.state.state))
                 } else {
@@ -2943,9 +2728,7 @@ mod tests {
         let app = CliApp::with_args(args).await.unwrap();
 
         assert!(app.cli().verbose);
-        assert!(
-            matches!(&app.cli().command, Some(Commands::Review { deck, .. }) if deck.as_ref().unwrap() == "test")
-        );
+        assert!(matches!(&app.cli().command, Some(Commands::Review { deck, .. }) if deck.as_ref().unwrap() == "test"));
     }
 
     #[tokio::test]
@@ -2966,9 +2749,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_import_command() {
-        let args = vec![
-            "ankitui", "import", "test.csv", "--deck", "test", "--format", "csv",
-        ];
+        let args = vec!["ankitui", "import", "test.csv", "--deck", "test", "--format", "csv"];
         let app = CliApp::with_args(args).await.unwrap();
 
         assert!(

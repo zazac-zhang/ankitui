@@ -2,7 +2,13 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders}, style::Style};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::Style,
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 /// Deck creation screen
 pub struct DeckCreateScreen {

@@ -9,9 +9,9 @@
 
 use crate::core::deck_manager::DeckManager;
 use crate::core::scheduler::{Rating, Scheduler};
-use crate::data::models::{BuryReason, BuriedCardRecord, Card, CardState, Deck, SuspendedCardRecord};
+use crate::data::models::{BuriedCardRecord, BuryReason, Card, CardState, Deck, SuspendedCardRecord};
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use uuid::Uuid;
@@ -271,8 +271,7 @@ impl SessionController {
             .context("Failed to get due cards")?;
 
         // Get new cards (respecting daily limits)
-        let remaining_new_cards =
-            (self.daily_limits.max_new_cards - self.daily_limits.new_cards_studied_today).max(0);
+        let remaining_new_cards = (self.daily_limits.max_new_cards - self.daily_limits.new_cards_studied_today).max(0);
         let new_cards = if remaining_new_cards > 0 {
             self.deck_manager
                 .get_new_cards(&deck_id, Some(remaining_new_cards))
@@ -420,9 +419,7 @@ impl SessionController {
             .context("Failed to save card review")?;
 
         // Check if card needs to be re-queued (for learning cards)
-        if updated_card.state.state == CardState::Learning
-            || updated_card.state.state == CardState::Relearning
-        {
+        if updated_card.state.state == CardState::Learning || updated_card.state.state == CardState::Relearning {
             // Calculate when this card should be shown again
             let next_review_time = updated_card.state.due;
             if next_review_time <= Utc::now() {
@@ -725,14 +722,10 @@ impl SessionController {
 
     /// Get session progress information
     pub fn session_progress(&self) -> SessionProgress {
-        let (new_remaining, learning_remaining, review_remaining, relearning_remaining) =
-            self.remaining_cards_count();
+        let (new_remaining, learning_remaining, review_remaining, relearning_remaining) = self.remaining_cards_count();
 
         SessionProgress {
-            total_remaining: new_remaining
-                + learning_remaining
-                + review_remaining
-                + relearning_remaining,
+            total_remaining: new_remaining + learning_remaining + review_remaining + relearning_remaining,
             new_remaining,
             learning_remaining,
             review_remaining,
@@ -756,7 +749,8 @@ impl SessionController {
             let recovery_dir = base_dir.join(".recovery");
 
             // Ensure recovery directory exists
-            tokio::fs::create_dir_all(&recovery_dir).await
+            tokio::fs::create_dir_all(&recovery_dir)
+                .await
                 .context("Failed to create recovery directory")?;
 
             let recovery_file = recovery_dir.join(format!("session_{}.json", deck_id));
@@ -770,10 +764,11 @@ impl SessionController {
                 timestamp: Utc::now(),
             };
 
-            let json_data = serde_json::to_string_pretty(&recovery_data)
-                .context("Failed to serialize recovery data")?;
+            let json_data =
+                serde_json::to_string_pretty(&recovery_data).context("Failed to serialize recovery data")?;
 
-            tokio::fs::write(&recovery_file, json_data).await
+            tokio::fs::write(&recovery_file, json_data)
+                .await
                 .context("Failed to write recovery file")?;
 
             log::info!("Session state saved to {:?}", recovery_file);
@@ -795,11 +790,12 @@ impl SessionController {
         }
 
         // Load recovery data
-        let json_data = tokio::fs::read_to_string(&recovery_file).await
+        let json_data = tokio::fs::read_to_string(&recovery_file)
+            .await
             .context("Failed to read recovery file")?;
 
-        let recovery_data: SessionRecoveryData = serde_json::from_str(&json_data)
-            .context("Failed to deserialize recovery data")?;
+        let recovery_data: SessionRecoveryData =
+            serde_json::from_str(&json_data).context("Failed to deserialize recovery data")?;
 
         // Validate recovery data is for the correct deck
         if recovery_data.deck_id != deck_id {
@@ -835,7 +831,9 @@ impl SessionController {
 
     /// Find a card in the queues by ID
     fn find_card_in_queues(&self, card_id: &Uuid) -> Option<Card> {
-        self.card_queues.new_cards.iter()
+        self.card_queues
+            .new_cards
+            .iter()
             .chain(self.card_queues.learning_cards.iter())
             .chain(self.card_queues.review_cards.iter())
             .chain(self.card_queues.relearning_cards.iter())

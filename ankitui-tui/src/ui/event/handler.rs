@@ -3,10 +3,10 @@
 //! Implements state-dependent event handling where the same event can have
 //! different meanings based on current application state.
 
-use crate::ui::state::{AppState, Screen};
-use crate::ui::event::{Event, Command, CommandType};
 use crate::domain::CardRating;
-use crossterm::event::{KeyCode, KeyModifiers, KeyEvent, MouseEvent as CrosstermMouseEvent, MouseEventKind};
+use crate::ui::event::{Command, CommandType, Event};
+use crate::ui::state::{AppState, Screen};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent as CrosstermMouseEvent, MouseEventKind};
 use uuid;
 
 /// Event Handler - Context-aware event processing
@@ -59,29 +59,34 @@ impl EventHandler {
             (KeyCode::Char(' '), KeyModifiers::NONE) => self.handle_space_contextual(screen),
 
             // Study session keys - only active in study mode
-            (KeyCode::Char('1'), KeyModifiers::NONE) if screen == Screen::StudySession =>
-                Command::user(CommandType::RateCurrentCard(CardRating::Again)),
-            (KeyCode::Char('2'), KeyModifiers::NONE) if screen == Screen::StudySession =>
-                Command::user(CommandType::RateCurrentCard(CardRating::Hard)),
-            (KeyCode::Char('3'), KeyModifiers::NONE) if screen == Screen::StudySession =>
-                Command::user(CommandType::RateCurrentCard(CardRating::Good)),
-            (KeyCode::Char('4'), KeyModifiers::NONE) if screen == Screen::StudySession =>
-                Command::user(CommandType::RateCurrentCard(CardRating::Easy)),
-            (KeyCode::Char(' '), KeyModifiers::NONE) if screen == Screen::StudySession =>
-                Command::user(CommandType::ShowAnswer),
+            (KeyCode::Char('1'), KeyModifiers::NONE) if screen == Screen::StudySession => {
+                Command::user(CommandType::RateCurrentCard(CardRating::Again))
+            }
+            (KeyCode::Char('2'), KeyModifiers::NONE) if screen == Screen::StudySession => {
+                Command::user(CommandType::RateCurrentCard(CardRating::Hard))
+            }
+            (KeyCode::Char('3'), KeyModifiers::NONE) if screen == Screen::StudySession => {
+                Command::user(CommandType::RateCurrentCard(CardRating::Good))
+            }
+            (KeyCode::Char('4'), KeyModifiers::NONE) if screen == Screen::StudySession => {
+                Command::user(CommandType::RateCurrentCard(CardRating::Easy))
+            }
+            (KeyCode::Char(' '), KeyModifiers::NONE) if screen == Screen::StudySession => {
+                Command::user(CommandType::ShowAnswer)
+            }
 
             // Escape key - context dependent
             (KeyCode::Esc, KeyModifiers::NONE) => self.handle_escape_contextual(screen),
 
             // Quit keys - global
-            (KeyCode::Char('q'), KeyModifiers::CONTROL) |
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) =>
-                Command::user(CommandType::Quit),
+            (KeyCode::Char('q'), KeyModifiers::CONTROL) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                Command::user(CommandType::Quit)
+            }
 
             // Help key - global
-            (KeyCode::F(1), KeyModifiers::NONE) |
-            (KeyCode::Char('?'), KeyModifiers::NONE) =>
-                Command::user(CommandType::ShowHelp),
+            (KeyCode::F(1), KeyModifiers::NONE) | (KeyCode::Char('?'), KeyModifiers::NONE) => {
+                Command::user(CommandType::ShowHelp)
+            }
 
             // Refresh keys - context dependent
             (KeyCode::F(5), KeyModifiers::NONE) => self.handle_refresh_contextual(screen),
@@ -93,8 +98,9 @@ impl EventHandler {
             (KeyCode::Char('n'), KeyModifiers::CONTROL) => self.handle_create_contextual(screen),
 
             // Delete key - context dependent
-            (KeyCode::Delete, KeyModifiers::NONE) |
-            (KeyCode::Backspace, KeyModifiers::CONTROL) => self.handle_delete_contextual(screen),
+            (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL) => {
+                self.handle_delete_contextual(screen)
+            }
 
             _ => Command::user(CommandType::Unknown),
         }
@@ -105,16 +111,15 @@ impl EventHandler {
         let screen = self.current_state.current_screen();
 
         match event.kind {
-            MouseEventKind::Down(crossterm::event::MouseButton::Left) =>
-                self.handle_left_click_contextual(event.column, event.row, screen),
-            MouseEventKind::Down(crossterm::event::MouseButton::Right) =>
-                self.handle_right_click_contextual(event.column, event.row, screen),
-            MouseEventKind::ScrollUp =>
-                self.handle_scroll_up_contextual(event.column, event.row, screen),
-            MouseEventKind::ScrollDown =>
-                self.handle_scroll_down_contextual(event.column, event.row, screen),
-            MouseEventKind::Moved =>
-                Command::user(CommandType::MouseMove(event.column, event.row)),
+            MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                self.handle_left_click_contextual(event.column, event.row, screen)
+            }
+            MouseEventKind::Down(crossterm::event::MouseButton::Right) => {
+                self.handle_right_click_contextual(event.column, event.row, screen)
+            }
+            MouseEventKind::ScrollUp => self.handle_scroll_up_contextual(event.column, event.row, screen),
+            MouseEventKind::ScrollDown => self.handle_scroll_down_contextual(event.column, event.row, screen),
+            MouseEventKind::Moved => Command::user(CommandType::MouseMove(event.column, event.row)),
             _ => Command::user(CommandType::Unknown),
         }
     }
@@ -241,7 +246,8 @@ impl EventHandler {
             Screen::StudySession => {
                 if self.current_state.is_showing_answer() {
                     // Check if click is on a rating button
-                    if y >= 10 && y <= 14 { // Rating button area
+                    if y >= 10 && y <= 14 {
+                        // Rating button area
                         let rating = match x {
                             10..=15 => CardRating::Again,
                             17..=22 => CardRating::Hard,

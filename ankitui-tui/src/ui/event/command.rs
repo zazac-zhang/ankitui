@@ -1,9 +1,9 @@
 //! Command system for the TUI application - State-aware
 
-use uuid::Uuid;
-use std::collections::HashMap;
-use crate::ui::state::Screen;
 use crate::domain::CardRating;
+use crate::ui::state::Screen;
+use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Command types for the application - State-aware
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,6 +92,7 @@ pub enum CommandType {
     SearchDecks(String),
     SearchCards(String),
     StartSearch,
+    SearchBackspace,
     ImportCards(String),
 
     // Statistics commands
@@ -151,7 +152,10 @@ impl Command {
     /// Create a system command
     pub fn system(command_type: CommandType) -> Self {
         let mut command = Self::new(command_type);
-        command.metadata.extra.insert("source".to_string(), "system".to_string());
+        command
+            .metadata
+            .extra
+            .insert("source".to_string(), "system".to_string());
         command
     }
 
@@ -200,10 +204,13 @@ impl Command {
             }
             CommandType::UpdateCard(card_id, front, back, tags) => {
                 let tags_str = tags.clone().map_or_else(|| "no tags".to_string(), |t| t.join(", "));
-                format!("Update card {}: {} -> {} [{}]", card_id,
+                format!(
+                    "Update card {}: {} -> {} [{}]",
+                    card_id,
                     front.as_deref().unwrap_or("no change"),
                     back.as_deref().unwrap_or("no change"),
-                    tags_str)
+                    tags_str
+                )
             }
             CommandType::DeleteCard(card_id) => format!("Delete card: {}", card_id),
             CommandType::LoadUserPreferences => "Load user preferences".to_string(),
@@ -233,23 +240,59 @@ impl Command {
     /// Check if command is valid in current context
     pub fn is_valid_for_screen(&self, screen: &crate::ui::state::Screen) -> bool {
         match &self.command_type {
-            CommandType::NavigateTo(_) | CommandType::NavigateBack | CommandType::NavigateToMainMenu |
-            CommandType::NavigateUp | CommandType::NavigateDown | CommandType::NavigateLeft | CommandType::NavigateRight |
-            CommandType::NavigatePageUp | CommandType::NavigatePageDown | CommandType::NavigateHome | CommandType::NavigateEnd |
-            CommandType::Select | CommandType::Cancel | CommandType::Confirm | CommandType::Quit => true,
-            CommandType::LoadDecks | CommandType::CreateDeck(_, _) | CommandType::SearchDecks(_) => matches!(screen, crate::ui::state::Screen::DeckSelection | crate::ui::state::Screen::MainMenu),
-            CommandType::SelectDeck(_) | CommandType::DeleteDeck(_) | CommandType::UpdateDeck(_, _, _) => matches!(screen, crate::ui::state::Screen::DeckSelection),
+            CommandType::NavigateTo(_)
+            | CommandType::NavigateBack
+            | CommandType::NavigateToMainMenu
+            | CommandType::NavigateUp
+            | CommandType::NavigateDown
+            | CommandType::NavigateLeft
+            | CommandType::NavigateRight
+            | CommandType::NavigatePageUp
+            | CommandType::NavigatePageDown
+            | CommandType::NavigateHome
+            | CommandType::NavigateEnd
+            | CommandType::Select
+            | CommandType::Cancel
+            | CommandType::Confirm
+            | CommandType::Quit => true,
+            CommandType::LoadDecks | CommandType::CreateDeck(_, _) => matches!(
+                screen,
+                crate::ui::state::Screen::DeckSelection | crate::ui::state::Screen::MainMenu
+            ),
+            CommandType::SelectDeck(_) | CommandType::DeleteDeck(_) | CommandType::UpdateDeck(_, _, _) => {
+                matches!(screen, crate::ui::state::Screen::DeckSelection)
+            }
             CommandType::StartStudySession(_, _) => matches!(screen, crate::ui::state::Screen::DeckSelection),
-            CommandType::EndStudySession | CommandType::RateCurrentCard(_) | CommandType::ShowAnswer | CommandType::HideAnswer |
-            CommandType::PauseSession | CommandType::ResumeSession | CommandType::SkipCurrentCard => matches!(screen, crate::ui::state::Screen::StudySession),
-            CommandType::CreateCard(_, _, _) | CommandType::UpdateCard(_, _, _, _) | CommandType::DeleteCard(_) | CommandType::SearchCards(_) => matches!(screen, crate::ui::state::Screen::CardEditor | crate::ui::state::Screen::DeckManagement),
-            CommandType::LoadUserPreferences | CommandType::UpdateUserPreferences(_) | CommandType::UpdateTheme(_) | CommandType::UpdateLanguage(_) | CommandType::UpdateStudyGoals(_, _) => matches!(screen, crate::ui::state::Screen::Settings),
-            CommandType::LoadUserStats | CommandType::LoadStatistics(_) | CommandType::RefreshStatistics => matches!(screen, crate::ui::state::Screen::Statistics),
-            CommandType::ShowMessage(_) | CommandType::ClearMessage | CommandType::SetLoading(_) | CommandType::ClearError => true,
+            CommandType::EndStudySession
+            | CommandType::RateCurrentCard(_)
+            | CommandType::ShowAnswer
+            | CommandType::HideAnswer
+            | CommandType::PauseSession
+            | CommandType::ResumeSession
+            | CommandType::SkipCurrentCard => matches!(screen, crate::ui::state::Screen::StudySession),
+            CommandType::CreateCard(_, _, _)
+            | CommandType::UpdateCard(_, _, _, _)
+            | CommandType::DeleteCard(_) => matches!(
+                screen,
+                crate::ui::state::Screen::CardEditor | crate::ui::state::Screen::DeckManagement
+            ),
+            CommandType::LoadUserPreferences
+            | CommandType::UpdateUserPreferences(_)
+            | CommandType::UpdateTheme(_)
+            | CommandType::UpdateLanguage(_)
+            | CommandType::UpdateStudyGoals(_, _) => matches!(screen, crate::ui::state::Screen::Settings),
+            CommandType::LoadUserStats | CommandType::LoadStatistics(_) | CommandType::RefreshStatistics => {
+                matches!(screen, crate::ui::state::Screen::Statistics)
+            }
+            CommandType::ShowMessage(_)
+            | CommandType::ClearMessage
+            | CommandType::SetLoading(_)
+            | CommandType::ClearError => true,
             CommandType::ShowHelp => matches!(screen, crate::ui::state::Screen::Help),
-            CommandType::SearchDecks(_) | CommandType::SearchCards(_) | CommandType::StartSearch => matches!(screen, crate::ui::state::Screen::Search),
+            CommandType::SearchDecks(_) | CommandType::SearchCards(_) | CommandType::StartSearch => {
+                matches!(screen, crate::ui::state::Screen::Search)
+            }
             _ => false,
         }
     }
 }
-

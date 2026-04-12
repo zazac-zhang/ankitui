@@ -134,10 +134,7 @@ impl EventLoop {
 
 impl Default for EventLoop {
     fn default() -> Self {
-        Self::new(
-            EventLoopConfig::default(),
-            Arc::new(RwLock::new(StateStore::new())),
-        )
+        Self::new(EventLoopConfig::default(), Arc::new(RwLock::new(StateStore::new())))
     }
 }
 
@@ -165,8 +162,7 @@ impl EventProcessor for ApplicationEventProcessor {
 
         // Handle the command using the app controller
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async { self.app_controller.handle_command(command).await })
+            tokio::runtime::Handle::current().block_on(async { self.app_controller.handle_command(command).await })
         })?;
 
         // Continue event loop unless it's a quit command
@@ -175,10 +171,7 @@ impl EventProcessor for ApplicationEventProcessor {
 }
 
 /// Convenience function to run the event loop with an application
-pub async fn run_event_loop_with_app(
-    mut app: &mut crate::app::App,
-    config: Option<EventLoopConfig>,
-) -> TuiResult<()> {
+pub async fn run_event_loop_with_app(mut app: &mut crate::app::App, config: Option<EventLoopConfig>) -> TuiResult<()> {
     use crossterm::{
         event::{DisableMouseCapture, EnableMouseCapture},
         execute,
@@ -240,11 +233,7 @@ pub async fn run_event_loop_with_app(
 
     // Restore terminal
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
 
     Ok(())
@@ -308,24 +297,16 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         }
 
         // Study session keys - only active in study mode
-        (KeyCode::Char('1'), KeyModifiers::NONE)
-            if screen == crate::ui::state::Screen::StudySession =>
-        {
+        (KeyCode::Char('1'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
             Command::user(CommandType::RateCurrentCard(CardRating::Again))
         }
-        (KeyCode::Char('2'), KeyModifiers::NONE)
-            if screen == crate::ui::state::Screen::StudySession =>
-        {
+        (KeyCode::Char('2'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
             Command::user(CommandType::RateCurrentCard(CardRating::Hard))
         }
-        (KeyCode::Char('3'), KeyModifiers::NONE)
-            if screen == crate::ui::state::Screen::StudySession =>
-        {
+        (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
             Command::user(CommandType::RateCurrentCard(CardRating::Good))
         }
-        (KeyCode::Char('4'), KeyModifiers::NONE)
-            if screen == crate::ui::state::Screen::StudySession =>
-        {
+        (KeyCode::Char('4'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
             Command::user(CommandType::RateCurrentCard(CardRating::Easy))
         }
 
@@ -333,8 +314,9 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Esc, KeyModifiers::NONE) => handle_escape_contextual(screen, current_state),
 
         // Quit keys - global
-        (KeyCode::Char('q'), KeyModifiers::CONTROL)
-        | (KeyCode::Char('c'), KeyModifiers::CONTROL) => Command::user(CommandType::Quit),
+        (KeyCode::Char('q'), KeyModifiers::CONTROL) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+            Command::user(CommandType::Quit)
+        }
 
         // Help key - global
         (KeyCode::F(1), KeyModifiers::NONE) | (KeyCode::Char('?'), KeyModifiers::NONE) => {
@@ -348,9 +330,7 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Char('/'), KeyModifiers::NONE) => handle_search_contextual(screen, current_state),
 
         // Create key - context dependent
-        (KeyCode::Char('n'), KeyModifiers::CONTROL) => {
-            handle_create_contextual(screen, current_state)
-        }
+        (KeyCode::Char('n'), KeyModifiers::CONTROL) => handle_create_contextual(screen, current_state),
 
         // Delete key - context dependent
         (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL) => {
@@ -362,9 +342,9 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             Command::user(CommandType::SearchDecks(c.to_string()))
         }
 
-        // Backspace for search screen
+        // Backspace for search screen - delete last character
         (KeyCode::Backspace, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
-            Command::user(CommandType::Unknown) // Will be handled by input handler
+            Command::user(CommandType::SearchBackspace)
         }
 
         _ => Command::user(CommandType::Unknown),
@@ -382,12 +362,8 @@ fn handle_mouse_event_contextual(event: CrosstermMouseEvent, current_state: &App
         MouseEventKind::Down(crossterm::event::MouseButton::Right) => {
             handle_right_click_contextual(event.column, event.row, screen, current_state)
         }
-        MouseEventKind::ScrollUp => {
-            handle_scroll_up_contextual(event.column, event.row, screen, current_state)
-        }
-        MouseEventKind::ScrollDown => {
-            handle_scroll_down_contextual(event.column, event.row, screen, current_state)
-        }
+        MouseEventKind::ScrollUp => handle_scroll_up_contextual(event.column, event.row, screen, current_state),
+        MouseEventKind::ScrollDown => handle_scroll_down_contextual(event.column, event.row, screen, current_state),
         MouseEventKind::Moved => Command::user(CommandType::MouseMove(event.column, event.row)),
         _ => Command::user(CommandType::Unknown),
     }
@@ -427,10 +403,7 @@ fn handle_navigation_left(screen: crate::ui::state::Screen, _current_state: &App
     }
 }
 
-fn handle_navigation_right(
-    screen: crate::ui::state::Screen,
-    _current_state: &AppState,
-) -> Command {
+fn handle_navigation_right(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateRight),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateRight),
@@ -443,9 +416,7 @@ fn handle_navigation_right(
 fn handle_select_contextual(screen: crate::ui::state::Screen, current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::Confirm),
-        crate::ui::state::Screen::DeckSelection => {
-            Command::user(CommandType::StartStudySessionDefault)
-        }
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::StartStudySessionDefault),
         crate::ui::state::Screen::StudySession => {
             if current_state.is_showing_answer() {
                 Command::user(CommandType::RateCurrentCard(CardRating::Good))
@@ -468,9 +439,7 @@ fn handle_space_contextual(screen: crate::ui::state::Screen, current_state: &App
                 Command::user(CommandType::ShowAnswer)
             }
         }
-        crate::ui::state::Screen::DeckSelection => {
-            Command::user(CommandType::SelectDeck(uuid::Uuid::nil()))
-        }
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectDeck(uuid::Uuid::nil())),
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::ToggleCardSide),
         _ => Command::user(CommandType::Select),
     }
@@ -496,10 +465,7 @@ fn handle_escape_contextual(screen: crate::ui::state::Screen, current_state: &Ap
 }
 
 // Context-specific refresh handlers
-fn handle_refresh_contextual(
-    screen: crate::ui::state::Screen,
-    _current_state: &AppState,
-) -> Command {
+fn handle_refresh_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::LoadDecks),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::RefreshStatistics),
@@ -509,26 +475,16 @@ fn handle_refresh_contextual(
 }
 
 // Context-specific search handlers
-fn handle_search_contextual(
-    screen: crate::ui::state::Screen,
-    _current_state: &AppState,
-) -> Command {
+fn handle_search_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
-        crate::ui::state::Screen::DeckSelection => {
-            Command::user(CommandType::SearchDecks(String::new()))
-        }
-        crate::ui::state::Screen::StudySession => {
-            Command::user(CommandType::SearchCards(String::new()))
-        }
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SearchDecks(String::new())),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::SearchCards(String::new())),
         _ => Command::user(CommandType::StartSearch),
     }
 }
 
 // Context-specific create handlers
-fn handle_create_contextual(
-    screen: crate::ui::state::Screen,
-    _current_state: &AppState,
-) -> Command {
+fn handle_create_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::CreateDeckPrompt),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::CreateCardPrompt),
@@ -537,26 +493,16 @@ fn handle_create_contextual(
 }
 
 // Context-specific delete handlers
-fn handle_delete_contextual(
-    screen: crate::ui::state::Screen,
-    _current_state: &AppState,
-) -> Command {
+fn handle_delete_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::DeleteDeckPrompt),
-        crate::ui::state::Screen::CardEditor => {
-            Command::user(CommandType::DeleteCard(uuid::Uuid::nil()))
-        }
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
         _ => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
     }
 }
 
 // Mouse event handlers
-fn handle_left_click_contextual(
-    x: u16,
-    y: u16,
-    screen: crate::ui::state::Screen,
-    current_state: &AppState,
-) -> Command {
+fn handle_left_click_contextual(x: u16, y: u16, screen: crate::ui::state::Screen, current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::StudySession => {
             if current_state.is_showing_answer() {
@@ -589,12 +535,8 @@ fn handle_right_click_contextual(
     _current_state: &AppState,
 ) -> Command {
     match screen {
-        crate::ui::state::Screen::DeckSelection => {
-            Command::user(CommandType::ShowDeckContextMenu(x, y))
-        }
-        crate::ui::state::Screen::StudySession => {
-            Command::user(CommandType::ShowCardContextMenu(x, y))
-        }
+        crate::ui::state::Screen::DeckSelection => Command::user(CommandType::ShowDeckContextMenu(x, y)),
+        crate::ui::state::Screen::StudySession => Command::user(CommandType::ShowCardContextMenu(x, y)),
         _ => Command::user(CommandType::RightClick(x, y)),
     }
 }
@@ -631,9 +573,7 @@ fn handle_paste_contextual(content: String, current_state: &AppState) -> Command
     let screen = current_state.current_screen();
 
     match screen {
-        crate::ui::state::Screen::CardEditor => {
-            Command::user(CommandType::PasteCardContent(content))
-        }
+        crate::ui::state::Screen::CardEditor => Command::user(CommandType::PasteCardContent(content)),
         crate::ui::state::Screen::DeckSelection if content.contains('\n') => {
             // Try to import cards from pasted content
             Command::user(CommandType::ImportCards(content))

@@ -395,11 +395,7 @@ impl Default for ThemeSettings {
     fn default() -> Self {
         Self {
             current_theme: "default".to_string(),
-            available_themes: vec![
-                "default".to_string(),
-                "dark".to_string(),
-                "light".to_string(),
-            ],
+            available_themes: vec!["default".to_string(), "dark".to_string(), "light".to_string()],
             custom_theme_path: None,
             auto_switch: false,
             light_theme: "light".to_string(),

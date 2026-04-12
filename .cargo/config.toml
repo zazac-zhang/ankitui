@@ -1,0 +1,11 @@
+[alias]
+c = "check --all-targets --all-features"
+t = "test --all-targets --all-features"
+r = "run"
+b = "build --release"
+cl = "clippy --all-targets --all-features -- -D warnings"
+f = "fmt --all"
+d = "doc --no-deps --workspace"
+
+[net]
+retry = 3

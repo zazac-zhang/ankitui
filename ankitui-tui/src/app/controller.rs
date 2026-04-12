@@ -2,12 +2,12 @@
 //!
 //! Provides high-level operations that bridge UI components with Core package business logic
 
-use crate::utils::error::{TuiResult, TuiError};
 use crate::app::main_app::App;
-use crate::ui::state::Screen;
 use crate::ui::event::Command;
-use ankitui_core::data::CardContent;
+use crate::ui::state::Screen;
+use crate::utils::error::{TuiError, TuiResult};
 use ankitui_core::core::Rating;
+use ankitui_core::data::CardContent;
 use uuid::Uuid;
 
 /// Application Controller - Main business logic coordinator
@@ -28,7 +28,9 @@ impl<'a> AppController<'a> {
     }
 
     /// Load and display all decks
-    pub async fn load_all_decks(&mut self) -> TuiResult<Vec<(ankitui_core::data::models::Deck, Vec<ankitui_core::data::models::Card>)>> {
+    pub async fn load_all_decks(
+        &mut self,
+    ) -> TuiResult<Vec<(ankitui_core::data::models::Deck, Vec<ankitui_core::data::models::Card>)>> {
         self.app.deck_service().get_all_decks().await
     }
 
@@ -39,9 +41,10 @@ impl<'a> AppController<'a> {
         // Update UI state
         {
             let state = self.app.state_store.read().await;
-            state.show_message(
-                crate::ui::state::store::SystemMessage::success("Success", &format!("Deck '{}' created successfully", name))
-            )?;
+            state.show_message(crate::ui::state::store::SystemMessage::success(
+                "Success",
+                &format!("Deck '{}' created successfully", name),
+            ))?;
         }
 
         Ok(deck_id)
@@ -61,9 +64,10 @@ impl<'a> AppController<'a> {
         // Update UI state
         {
             let state = self.app.state_store.read().await;
-            state.show_message(
-                crate::ui::state::store::SystemMessage::success("Success", &format!("Deck '{}' deleted successfully", deck_name))
-            )?;
+            state.show_message(crate::ui::state::store::SystemMessage::success(
+                "Success",
+                &format!("Deck '{}' deleted successfully", deck_name),
+            ))?;
         }
 
         Ok(())
@@ -82,9 +86,10 @@ impl<'a> AppController<'a> {
 
         {
             let state = self.app.state_store.read().await;
-            state.show_message(
-                crate::ui::state::store::SystemMessage::success("Session Started", "Study session started")
-            )?;
+            state.show_message(crate::ui::state::store::SystemMessage::success(
+                "Session Started",
+                "Study session started",
+            ))?;
         }
 
         Ok(())
@@ -95,16 +100,13 @@ impl<'a> AppController<'a> {
         if let Ok(stats) = self.app.study_service_mut().end_session().await {
             {
                 let state = self.app.state_store.read().await;
-                state.show_message(
-                    crate::ui::state::store::SystemMessage::success(
-                        "Session Ended",
-                        &format!(
-                            "Study session ended. Studied {} cards in {:.1} minutes",
-                            stats.cards_studied,
-                            stats.average_time_seconds
-                        )
-                    )
-                )?;
+                state.show_message(crate::ui::state::store::SystemMessage::success(
+                    "Session Ended",
+                    &format!(
+                        "Study session ended. Studied {} cards in {:.1} minutes",
+                        stats.cards_studied, stats.average_time_seconds
+                    ),
+                ))?;
             }
 
             // Navigate back to deck selection
@@ -140,9 +142,10 @@ impl<'a> AppController<'a> {
 
         {
             let state = self.app.state_store.read().await;
-            state.show_message(
-                crate::ui::state::store::SystemMessage::success("Success", "Cards added successfully")
-            )?;
+            state.show_message(crate::ui::state::store::SystemMessage::success(
+                "Success",
+                "Cards added successfully",
+            ))?;
         }
 
         Ok(())
@@ -215,9 +218,10 @@ impl<'a> AppController<'a> {
                 let _decks = self.load_all_decks().await?;
                 {
                     let state = self.app.state_store.read().await;
-                    state.show_message(
-                        crate::ui::state::store::SystemMessage::success("Success", "Decks loaded successfully")
-                    )?;
+                    state.show_message(crate::ui::state::store::SystemMessage::success(
+                        "Success",
+                        "Decks loaded successfully",
+                    ))?;
                 }
             }
 
@@ -231,11 +235,20 @@ impl<'a> AppController<'a> {
                 let current_screen = state.get_state().current_screen.clone();
                 drop(state);
                 if matches!(current_screen, Screen::Search) {
-                    self.app.state_store.read().await.update_state(|state| {
-                        let current = state.ui_state.get("search_type").cloned().unwrap_or("Decks".to_string());
-                        let new_type = if current == "Decks" { "Cards" } else { "Decks" };
-                        state.ui_state.insert("search_type".to_string(), new_type.to_string());
-                    }).ok();
+                    self.app
+                        .state_store
+                        .read()
+                        .await
+                        .update_state(|state| {
+                            let current = state
+                                .ui_state
+                                .get("search_type")
+                                .cloned()
+                                .unwrap_or("Decks".to_string());
+                            let new_type = if current == "Decks" { "Cards" } else { "Decks" };
+                            state.ui_state.insert("search_type".to_string(), new_type.to_string());
+                        })
+                        .ok();
                 }
             }
 
@@ -247,15 +260,22 @@ impl<'a> AppController<'a> {
                 if !matches!(current_screen, Screen::Search) {
                     self.navigate_to_screen(Screen::Search).await?;
                 }
-                self.app.state_store.read().await.update_state(|state| {
-                    state.ui_state.insert("search_query".to_string(), query.clone());
-                    let search_type = if matches!(command.command_type, CommandType::SearchDecks(_)) {
-                        "Decks"
-                    } else {
-                        "Cards"
-                    };
-                    state.ui_state.insert("search_type".to_string(), search_type.to_string());
-                }).ok();
+                self.app
+                    .state_store
+                    .read()
+                    .await
+                    .update_state(|state| {
+                        state.ui_state.insert("search_query".to_string(), query.clone());
+                        let search_type = if matches!(command.command_type, CommandType::SearchDecks(_)) {
+                            "Decks"
+                        } else {
+                            "Cards"
+                        };
+                        state
+                            .ui_state
+                            .insert("search_type".to_string(), search_type.to_string());
+                    })
+                    .ok();
             }
 
             CommandType::StartSearch => {
@@ -271,9 +291,10 @@ impl<'a> AppController<'a> {
                 let _stats = self.load_global_statistics().await?;
                 {
                     let state = self.app.state_store.read().await;
-                    state.show_message(
-                        crate::ui::state::store::SystemMessage::success("Success", "Statistics refreshed")
-                    )?;
+                    state.show_message(crate::ui::state::store::SystemMessage::success(
+                        "Success",
+                        "Statistics refreshed",
+                    ))?;
                 }
             }
 
@@ -299,40 +320,90 @@ impl<'a> AppController<'a> {
                 let current_screen = state.get_state().current_screen.clone();
                 drop(state);
                 if matches!(current_screen, Screen::StudyPrefs) {
-                    self.app.state_store.read().await.update_state(|state| {
-                        let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                        match idx {
-                            0 => {
-                                let val = state.ui_state.get("new_cards_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
-                                if is_decrement { state.ui_state.insert("new_cards_per_day".to_string(), (val.saturating_sub(1)).to_string()); }
-                                else { state.ui_state.insert("new_cards_per_day".to_string(), (val + 1).to_string()); }
+                    self.app
+                        .state_store
+                        .read()
+                        .await
+                        .update_state(|state| {
+                            let idx = state
+                                .ui_state
+                                .get("prefs_index")
+                                .and_then(|s| s.parse::<usize>().ok())
+                                .unwrap_or(0);
+                            match idx {
+                                0 => {
+                                    let val = state
+                                        .ui_state
+                                        .get("new_cards_per_day")
+                                        .and_then(|s| s.parse::<u32>().ok())
+                                        .unwrap_or(20);
+                                    if is_decrement {
+                                        state.ui_state.insert(
+                                            "new_cards_per_day".to_string(),
+                                            (val.saturating_sub(1)).to_string(),
+                                        );
+                                    } else {
+                                        state
+                                            .ui_state
+                                            .insert("new_cards_per_day".to_string(), (val + 1).to_string());
+                                    }
+                                }
+                                1 => {
+                                    let val = state
+                                        .ui_state
+                                        .get("max_reviews_per_day")
+                                        .and_then(|s| s.parse::<u32>().ok())
+                                        .unwrap_or(200);
+                                    if is_decrement {
+                                        state.ui_state.insert(
+                                            "max_reviews_per_day".to_string(),
+                                            (val.saturating_sub(1)).to_string(),
+                                        );
+                                    } else {
+                                        state
+                                            .ui_state
+                                            .insert("max_reviews_per_day".to_string(), (val + 1).to_string());
+                                    }
+                                }
+                                2 | 3 => {
+                                    // Toggle boolean
+                                    let key = if idx == 2 { "auto_advance" } else { "show_hint" };
+                                    let val = state.ui_state.get(key).map(|s| s == "true").unwrap_or(false);
+                                    state.ui_state.insert(key.to_string(), (!val).to_string());
+                                }
+                                _ => {}
                             }
-                            1 => {
-                                let val = state.ui_state.get("max_reviews_per_day").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
-                                if is_decrement { state.ui_state.insert("max_reviews_per_day".to_string(), (val.saturating_sub(1)).to_string()); }
-                                else { state.ui_state.insert("max_reviews_per_day".to_string(), (val + 1).to_string()); }
-                            }
-                            2 | 3 => {
-                                // Toggle boolean
-                                let key = if idx == 2 { "auto_advance" } else { "show_hint" };
-                                let val = state.ui_state.get(key).map(|s| s == "true").unwrap_or(false);
-                                state.ui_state.insert(key.to_string(), (!val).to_string());
-                            }
-                            _ => {}
-                        }
-                    }).ok();
+                        })
+                        .ok();
                 } else if matches!(current_screen, Screen::UiSettings) {
-                    self.app.state_store.read().await.update_state(|state| {
-                        let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                        if idx == 1 {
-                            let theme = state.ui_state.get("theme").cloned().unwrap_or_else(|| state.user_preferences.theme.clone());
-                            let themes = vec!["default", "dark", "light"];
-                            let ci = themes.iter().position(|t| t == &theme).unwrap_or(0);
-                            let ni = if is_decrement { ci.saturating_sub(1) } else { (ci + 1).min(2) };
-                            state.ui_state.insert("theme".to_string(), themes[ni].to_string());
-                            state.user_preferences.theme = themes[ni].to_string();
-                        }
-                    }).ok();
+                    self.app
+                        .state_store
+                        .read()
+                        .await
+                        .update_state(|state| {
+                            let idx = state
+                                .ui_state
+                                .get("ui_settings_index")
+                                .and_then(|s| s.parse::<usize>().ok())
+                                .unwrap_or(0);
+                            if idx == 1 {
+                                let theme = state
+                                    .ui_state
+                                    .get("theme")
+                                    .cloned()
+                                    .unwrap_or_else(|| state.user_preferences.theme.clone());
+                                let themes = vec!["default", "dark", "light"];
+                                let ci = themes.iter().position(|t| t == &theme).unwrap_or(0);
+                                let ni = if is_decrement {
+                                    ci.saturating_sub(1)
+                                } else {
+                                    (ci + 1).min(2)
+                                };
+                                state.ui_state.insert("theme".to_string(), themes[ni].to_string());
+                                state.user_preferences.theme = themes[ni].to_string();
+                            }
+                        })
+                        .ok();
                 }
             }
 
@@ -386,9 +457,10 @@ impl<'a> AppController<'a> {
                 {
                     let state = self.app.state_store.read().await;
                     state.set_current_card_study(false)?;
-                    state.show_message(
-                        crate::ui::state::store::SystemMessage::info("Info", "No more cards to study")
-                    )?;
+                    state.show_message(crate::ui::state::store::SystemMessage::info(
+                        "Info",
+                        "No more cards to study",
+                    ))?;
                 }
             }
         }
@@ -455,9 +527,10 @@ impl<'a> AppController<'a> {
         if let Ok(decks) = decks_result {
             if decks.is_empty() {
                 let state = self.app.state_store.read().await;
-                state.show_message(
-                    crate::ui::state::store::SystemMessage::warning("No Decks", "No decks available. Create a deck first.")
-                )?;
+                state.show_message(crate::ui::state::store::SystemMessage::warning(
+                    "No Decks",
+                    "No decks available. Create a deck first.",
+                ))?;
                 return Ok(());
             }
 
@@ -479,61 +552,93 @@ impl<'a> AppController<'a> {
                 self.start_study_session(deck_id).await?;
             } else {
                 let state = self.app.state_store.read().await;
-                state.show_message(
-                    crate::ui::state::store::SystemMessage::error("Error", "Invalid deck selection")
-                )?;
+                state.show_message(crate::ui::state::store::SystemMessage::error(
+                    "Error",
+                    "Invalid deck selection",
+                ))?;
             }
         } else {
             let state = self.app.state_store.read().await;
-            state.show_message(
-                crate::ui::state::store::SystemMessage::error("Error", "Failed to load decks")
-            )?;
+            state.show_message(crate::ui::state::store::SystemMessage::error(
+                "Error",
+                "Failed to load decks",
+            ))?;
         }
 
         Ok(())
     }
 
     async fn update_state_for_screen(&mut self, screen: Screen) -> TuiResult<()> {
-            let state_store = self.app.state_store.read().await;
-            state_store.update_state(|state| {
-                state.current_screen = screen.clone();
+        let state_store = self.app.state_store.read().await;
+        state_store.update_state(|state| {
+            state.current_screen = screen.clone();
 
-                // Update UI state based on screen
-                match screen {
-                    Screen::DeckSelection => {
-                        state.loading = false;
-                        // Initialize deck selection if needed
-                        if state.deck_list_selected.is_none() {
-                            state.deck_list_selected = Some(0);
-                        }
+            // Update UI state based on screen
+            match screen {
+                Screen::DeckSelection => {
+                    state.loading = false;
+                    // Initialize deck selection if needed
+                    if state.deck_list_selected.is_none() {
+                        state.deck_list_selected = Some(0);
                     }
-                    Screen::StudySession => {
-                        // Study session specific setup
-                    }
-                    Screen::Statistics => {
-                        // Statistics specific setup
-                    }
-                    Screen::StudyPrefs => {
-                        state.ui_state.entry("prefs_index".to_string()).or_insert("0".to_string());
-                        state.ui_state.entry("new_cards_per_day".to_string()).or_insert("20".to_string());
-                        state.ui_state.entry("max_reviews_per_day".to_string()).or_insert("200".to_string());
-                        state.ui_state.entry("auto_advance".to_string()).or_insert(state.user_preferences.auto_advance.to_string());
-                        state.ui_state.entry("show_hint".to_string()).or_insert("true".to_string());
-                    }
-                    Screen::UiSettings => {
-                        state.ui_state.entry("ui_settings_index".to_string()).or_insert("0".to_string());
-                        state.ui_state.entry("theme".to_string()).or_insert(state.user_preferences.theme.clone());
-                    }
-                    Screen::DataManage => {
-                        state.ui_state.entry("data_index".to_string()).or_insert("0".to_string());
-                    }
-                    Screen::Search => {
-                        state.ui_state.entry("search_type".to_string()).or_insert("Decks".to_string());
-                        state.ui_state.entry("search_query".to_string()).or_insert(String::new());
-                    }
-                    _ => {}
                 }
-            })?;
+                Screen::StudySession => {
+                    // Study session specific setup
+                }
+                Screen::Statistics => {
+                    // Statistics specific setup
+                }
+                Screen::StudyPrefs => {
+                    state
+                        .ui_state
+                        .entry("prefs_index".to_string())
+                        .or_insert("0".to_string());
+                    state
+                        .ui_state
+                        .entry("new_cards_per_day".to_string())
+                        .or_insert("20".to_string());
+                    state
+                        .ui_state
+                        .entry("max_reviews_per_day".to_string())
+                        .or_insert("200".to_string());
+                    state
+                        .ui_state
+                        .entry("auto_advance".to_string())
+                        .or_insert(state.user_preferences.auto_advance.to_string());
+                    state
+                        .ui_state
+                        .entry("show_hint".to_string())
+                        .or_insert("true".to_string());
+                }
+                Screen::UiSettings => {
+                    state
+                        .ui_state
+                        .entry("ui_settings_index".to_string())
+                        .or_insert("0".to_string());
+                    state
+                        .ui_state
+                        .entry("theme".to_string())
+                        .or_insert(state.user_preferences.theme.clone());
+                }
+                Screen::DataManage => {
+                    state
+                        .ui_state
+                        .entry("data_index".to_string())
+                        .or_insert("0".to_string());
+                }
+                Screen::Search => {
+                    state
+                        .ui_state
+                        .entry("search_type".to_string())
+                        .or_insert("Decks".to_string());
+                    state
+                        .ui_state
+                        .entry("search_query".to_string())
+                        .or_insert(String::new());
+                }
+                _ => {}
+            }
+        })?;
 
         Ok(())
     }

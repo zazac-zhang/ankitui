@@ -3,7 +3,13 @@
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
 use ankitui_core::data::models::Card;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders, Clear}, style::{Style, Color, Modifier}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Clear, Paragraph},
+    Frame,
+};
 
 /// Study screen showing card question
 pub struct StudyQuestionScreen {
@@ -77,8 +83,7 @@ impl Component for StudyQuestionScreen {
             self.card.state.ease_factor * 100.0
         );
 
-        let header = Paragraph::new(header_text)
-            .style(Style::default().fg(Color::Cyan));
+        let header = Paragraph::new(header_text).style(Style::default().fg(Color::Cyan));
 
         // Question content
         let question_text = format!(
@@ -96,18 +101,16 @@ impl Component for StudyQuestionScreen {
             .style(Style::default().add_modifier(Modifier::BOLD));
 
         // Instructions
-        let instructions = Paragraph::new(
-            "Space: Show Answer | H: Toggle Hint | Esc: Pause Session"
-        )
-        .style(Style::default().fg(Color::Yellow));
+        let instructions = Paragraph::new("Space: Show Answer | H: Toggle Hint | Esc: Pause Session")
+            .style(Style::default().fg(Color::Yellow));
 
         // Layout
         let chunks = ratatui::layout::Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
-                ratatui::layout::Constraint::Length(3),  // Header
-                ratatui::layout::Constraint::Min(0),     // Question (flexible)
-                ratatui::layout::Constraint::Length(3),  // Instructions
+                ratatui::layout::Constraint::Length(3), // Header
+                ratatui::layout::Constraint::Min(0),    // Question (flexible)
+                ratatui::layout::Constraint::Length(3), // Instructions
             ])
             .split(area);
 

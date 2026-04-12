@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 use uuid::Uuid;
 
 /// Deck management operations
@@ -130,8 +135,7 @@ impl Component for DeckManageScreen {
                 ListItem::new(format!("{} {}", prefix, action))
             })
             .collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Actions"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Actions"));
         f.render_widget(list, chunks[2]);
 
         let footer_text = if self.status_message.is_empty() {
@@ -149,31 +153,39 @@ impl Component for DeckManageScreen {
         use crossterm::event::{Event, KeyCode, KeyEventKind};
 
         match event {
-            Event::Key(key) if key.kind == KeyEventKind::Press => {
-                match key.code {
-                    KeyCode::Up => {
-                        self.move_up();
-                        Ok(false)
-                    }
-                    KeyCode::Down => {
-                        self.move_down();
-                        Ok(false)
-                    }
-                    KeyCode::Enter => {
-                        self.execute_action();
-                        Ok(false)
-                    }
-                    KeyCode::Esc => Ok(true),
-                    _ => Ok(false),
+            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Up => {
+                    self.move_up();
+                    Ok(false)
                 }
-            }
+                KeyCode::Down => {
+                    self.move_down();
+                    Ok(false)
+                }
+                KeyCode::Enter => {
+                    self.execute_action();
+                    Ok(false)
+                }
+                KeyCode::Esc => Ok(true),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "deck_manage_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "deck_manage_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

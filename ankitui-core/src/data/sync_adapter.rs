@@ -53,27 +53,21 @@ impl SyncAdapter {
             .context("Failed to load card states")?;
 
         // Create state lookup map
-        let state_map: HashMap<Uuid, CardStateData> = card_states
-            .into_iter()
-            .map(|state| (state.id, state))
-            .collect();
+        let state_map: HashMap<Uuid, CardStateData> = card_states.into_iter().map(|state| (state.id, state)).collect();
 
         // Merge content with state
         let mut cards = Vec::new();
         for content in card_contents {
-            let state = state_map
-                .get(&content.id)
-                .cloned()
-                .unwrap_or_else(|| CardStateData {
-                    id: content.id,
-                    due: Utc::now(),
-                    interval: 0,
-                    ease_factor: 2.5,
-                    reps: 0,
-                    lapses: 0,
-                    state: crate::data::models::CardState::New,
-                    updated_at: Utc::now(),
-                });
+            let state = state_map.get(&content.id).cloned().unwrap_or_else(|| CardStateData {
+                id: content.id,
+                due: Utc::now(),
+                interval: 0,
+                ease_factor: 2.5,
+                reps: 0,
+                lapses: 0,
+                state: crate::data::models::CardState::New,
+                updated_at: Utc::now(),
+            });
 
             cards.push(Card { content, state });
         }
@@ -98,26 +92,21 @@ impl SyncAdapter {
                 .await
                 .context("Failed to load card states")?;
 
-            let state_map: HashMap<Uuid, CardStateData> = card_states
-                .into_iter()
-                .map(|state| (state.id, state))
-                .collect();
+            let state_map: HashMap<Uuid, CardStateData> =
+                card_states.into_iter().map(|state| (state.id, state)).collect();
 
             let mut cards = Vec::new();
             for content in card_contents {
-                let state = state_map
-                    .get(&content.id)
-                    .cloned()
-                    .unwrap_or_else(|| CardStateData {
-                        id: content.id,
-                        due: Utc::now(),
-                        interval: 0,
-                        ease_factor: 2.5,
-                        reps: 0,
-                        lapses: 0,
-                        state: crate::data::models::CardState::New,
-                        updated_at: Utc::now(),
-                    });
+                let state = state_map.get(&content.id).cloned().unwrap_or_else(|| CardStateData {
+                    id: content.id,
+                    due: Utc::now(),
+                    interval: 0,
+                    ease_factor: 2.5,
+                    reps: 0,
+                    lapses: 0,
+                    state: crate::data::models::CardState::New,
+                    updated_at: Utc::now(),
+                });
 
                 cards.push(Card { content, state });
             }
@@ -158,15 +147,11 @@ impl SyncAdapter {
             .context("Failed to load existing deck")?;
 
         // Extract content from existing cards without consuming them
-        let mut all_card_contents: Vec<CardContent> =
-            existing_cards.iter().map(|c| c.content.clone()).collect();
+        let mut all_card_contents: Vec<CardContent> = existing_cards.iter().map(|c| c.content.clone()).collect();
         all_card_contents.extend(cards.iter().cloned());
 
         // Create Card objects for new cards (with default state)
-        let new_cards: Vec<Card> = cards
-            .iter()
-            .map(|content| Card::new(content.clone()))
-            .collect();
+        let new_cards: Vec<Card> = cards.iter().map(|content| Card::new(content.clone())).collect();
 
         // Keep existing cards that aren't being replaced
         let existing_cards_filtered: Vec<Card> = existing_cards
@@ -210,10 +195,7 @@ impl SyncAdapter {
         }
 
         // Load all decks to find cards that are due
-        let all_decks = self
-            .load_all_decks()
-            .await
-            .context("Failed to load all decks")?;
+        let all_decks = self.load_all_decks().await.context("Failed to load all decks")?;
 
         let mut result = Vec::new();
 
@@ -232,15 +214,8 @@ impl SyncAdapter {
     }
 
     /// Get cards due for review in a specific deck
-    pub async fn get_due_cards_in_deck(
-        &self,
-        deck_uuid: &Uuid,
-        limit: Option<i32>,
-    ) -> Result<Vec<Card>> {
-        let (_deck, cards) = self
-            .load_deck(deck_uuid)
-            .await
-            .context("Failed to load deck")?;
+    pub async fn get_due_cards_in_deck(&self, deck_uuid: &Uuid, limit: Option<i32>) -> Result<Vec<Card>> {
+        let (_deck, cards) = self.load_deck(deck_uuid).await.context("Failed to load deck")?;
 
         let due_cards: Vec<Card> = cards
             .into_iter()
@@ -253,10 +228,7 @@ impl SyncAdapter {
 
     /// Get new cards for a deck
     pub async fn get_new_cards(&self, deck_uuid: &Uuid, limit: Option<i32>) -> Result<Vec<Card>> {
-        let (_deck, cards) = self
-            .load_deck(deck_uuid)
-            .await
-            .context("Failed to load deck")?;
+        let (_deck, cards) = self.load_deck(deck_uuid).await.context("Failed to load deck")?;
 
         let new_cards: Vec<Card> = cards
             .into_iter()
@@ -474,10 +446,7 @@ impl SyncAdapter {
 
     /// Close the sync adapter and underlying connections
     pub async fn close(&self) -> Result<()> {
-        self.state_store
-            .close()
-            .await
-            .context("Failed to close state store")?;
+        self.state_store.close().await.context("Failed to close state store")?;
         Ok(())
     }
 
@@ -506,17 +475,12 @@ impl SyncAdapter {
 
     /// Get a deck by UUID
     pub async fn get_deck(&self, deck_uuid: &Uuid) -> Option<Deck> {
-        self.content_store
-            .load_deck(deck_uuid)
-            .ok()
-            .map(|(deck, _)| deck)
+        self.content_store.load_deck(deck_uuid).ok().map(|(deck, _)| deck)
     }
 
     /// Get card state by card ID
     pub async fn get_card_state(&self, card_id: &Uuid) -> Result<Option<CardStateData>> {
-        self.state_store
-            .load_card_state(card_id)
-            .await
+        self.state_store.load_card_state(card_id).await
     }
 
     /// List all decks (without cards)

@@ -1,8 +1,8 @@
 //! Configuration profiles for different user types
 
-use serde::{Deserialize, Serialize};
 use super::config::Config;
 use super::validator::ConfigValidator;
+use serde::{Deserialize, Serialize};
 
 /// Configuration profiles for different user types
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,8 +65,7 @@ pub fn power_user_profile() -> ConfigProfile {
 
     ConfigProfile {
         name: "power".to_string(),
-        description: "Advanced configuration for experienced users with high volume learning"
-            .to_string(),
+        description: "Advanced configuration for experienced users with high volume learning".to_string(),
         config,
     }
 }
@@ -126,8 +125,8 @@ pub mod helpers {
 
     /// Create configuration from profile
     pub fn config_from_profile(profile_name: &str) -> Result<Config> {
-        let profile = get_config_profile(profile_name)
-            .ok_or_else(|| anyhow::anyhow!("Unknown profile: {}", profile_name))?;
+        let profile =
+            get_config_profile(profile_name).ok_or_else(|| anyhow::anyhow!("Unknown profile: {}", profile_name))?;
         Ok(profile.config)
     }
 

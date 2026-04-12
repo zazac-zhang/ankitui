@@ -1,9 +1,15 @@
 //! Study session finished screen
 
+use crate::domain::StudySessionStats;
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use crate::domain::StudySessionStats;
-use ratatui::{backend::Backend, layout::Rect, Frame, widgets::{Paragraph, Block, Borders}, style::{Style, Color, Modifier}};
+use ratatui::{
+    backend::Backend,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Paragraph},
+    Frame,
+};
 
 /// Study session completion screen
 pub struct StudyFinishedScreen {

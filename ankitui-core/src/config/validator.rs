@@ -14,9 +14,7 @@ impl ConfigValidator {
         }
 
         if config.scheduler.min_ease_factor >= config.scheduler.max_ease_factor {
-            return Err(anyhow::anyhow!(
-                "Min ease factor must be less than max ease factor"
-            ));
+            return Err(anyhow::anyhow!("Min ease factor must be less than max ease factor"));
         }
 
         if config.scheduler.max_interval <= 0 {
@@ -38,9 +36,7 @@ impl ConfigValidator {
         }
 
         if config.daily.day_start_hour >= config.daily.day_end_hour {
-            return Err(anyhow::anyhow!(
-                "Day start hour must be less than day end hour"
-            ));
+            return Err(anyhow::anyhow!("Day start hour must be less than day end hour"));
         }
 
         // Validate data config

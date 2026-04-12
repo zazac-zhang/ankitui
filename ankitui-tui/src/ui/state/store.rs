@@ -1,11 +1,11 @@
 //! Centralized state store for the TUI application
 
+use crate::domain::*;
+use crate::utils::error::{TuiError, TuiResult};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-use crate::domain::*;
-use crate::utils::error::{TuiError, TuiResult};
 
 /// Application state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,9 +74,9 @@ pub enum MessageLevel {
 /// Message display duration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Duration {
-    Short,   // 2 seconds
-    Medium,  // 5 seconds
-    Long,    // 10 seconds
+    Short,    // 2 seconds
+    Medium,   // 5 seconds
+    Long,     // 10 seconds
     Infinite, // Until dismissed
 }
 
@@ -245,7 +245,8 @@ impl StateStore {
     pub fn set_current_screen(&mut self, screen: Screen) {
         self.update_state(|state| {
             state.current_screen = screen;
-        }).unwrap();
+        })
+        .unwrap();
     }
 
     /// Set error message
@@ -419,8 +420,11 @@ impl StateStore {
 
     /// Check if currently showing answer
     pub fn is_showing_answer(&self) -> bool {
-        self.state.read().unwrap()
-            .ui_state.get("showing_answer")
+        self.state
+            .read()
+            .unwrap()
+            .ui_state
+            .get("showing_answer")
             .map(|s| s == "true")
             .unwrap_or(false)
     }
@@ -436,7 +440,10 @@ impl StateStore {
             callback: Arc::new(callback),
         };
 
-        self.subscriptions.write().unwrap().insert(subscription_id, subscription);
+        self.subscriptions
+            .write()
+            .unwrap()
+            .insert(subscription_id, subscription);
         subscription_id
     }
 
@@ -510,7 +517,8 @@ impl AppState {
 
     /// Check if currently showing answer
     pub fn is_showing_answer(&self) -> bool {
-        self.ui_state.get("showing_answer")
+        self.ui_state
+            .get("showing_answer")
             .map(|s| s == "true")
             .unwrap_or(false)
     }
@@ -525,4 +533,3 @@ impl AppState {
         self.message = Some(SystemMessage::info("Info", message.as_str()));
     }
 }
-

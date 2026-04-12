@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 
 /// Help screen with categorized shortcuts
 pub struct HelpScreen {
@@ -11,30 +16,42 @@ pub struct HelpScreen {
 }
 
 const HELP_CATEGORIES: &[(&str, &[(&str, &str)])] = &[
-    ("Global Shortcuts", &[
-        ("Ctrl+Q / Ctrl+C", "Quit application"),
-        ("F1 / ?", "Show this help"),
-        ("F5", "Refresh current screen"),
-        ("Esc", "Go back / Cancel"),
-    ]),
-    ("Navigation", &[
-        ("Up / Down", "Navigate items"),
-        ("Left / Right", "Navigate tabs / Adjust values"),
-        ("Enter", "Confirm / Select / Execute"),
-        ("Tab", "Switch search type"),
-    ]),
-    ("Study Session", &[
-        ("Space", "Show answer / Confirm"),
-        ("1", "Again - Review soon"),
-        ("2", "Hard - Review later"),
-        ("3", "Good - Normal interval"),
-        ("4", "Easy - Longer interval"),
-    ]),
-    ("Settings", &[
-        ("Ctrl+S", "Save settings"),
-        ("Enter", "Toggle boolean option"),
-        ("Left / Right", "Adjust numeric values"),
-    ]),
+    (
+        "Global Shortcuts",
+        &[
+            ("Ctrl+Q / Ctrl+C", "Quit application"),
+            ("F1 / ?", "Show this help"),
+            ("F5", "Refresh current screen"),
+            ("Esc", "Go back / Cancel"),
+        ],
+    ),
+    (
+        "Navigation",
+        &[
+            ("Up / Down", "Navigate items"),
+            ("Left / Right", "Navigate tabs / Adjust values"),
+            ("Enter", "Confirm / Select / Execute"),
+            ("Tab", "Switch search type"),
+        ],
+    ),
+    (
+        "Study Session",
+        &[
+            ("Space", "Show answer / Confirm"),
+            ("1", "Again - Review soon"),
+            ("2", "Hard - Review later"),
+            ("3", "Good - Normal interval"),
+            ("4", "Easy - Longer interval"),
+        ],
+    ),
+    (
+        "Settings",
+        &[
+            ("Ctrl+S", "Save settings"),
+            ("Enter", "Toggle boolean option"),
+            ("Left / Right", "Adjust numeric values"),
+        ],
+    ),
 ];
 
 impl HelpScreen {
@@ -86,19 +103,19 @@ impl Component for HelpScreen {
                 ListItem::new(format!("{} {}", prefix, name))
             })
             .collect();
-        let cat_list = List::new(categories_list)
-            .block(Block::default().borders(Borders::ALL).title("Categories"));
+        let cat_list = List::new(categories_list).block(Block::default().borders(Borders::ALL).title("Categories"));
         f.render_widget(cat_list, chunks[1]);
 
         let (_, shortcuts) = HELP_CATEGORIES[self.selected_category];
         let shortcut_items: Vec<ListItem> = shortcuts
             .iter()
-            .map(|(key, desc)| {
-                ListItem::new(format!("  {:20} {}", key, desc))
-            })
+            .map(|(key, desc)| ListItem::new(format!("  {:20} {}", key, desc)))
             .collect();
-        let shortcut_list = List::new(shortcut_items)
-            .block(Block::default().borders(Borders::ALL).title(HELP_CATEGORIES[self.selected_category].0));
+        let shortcut_list = List::new(shortcut_items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(HELP_CATEGORIES[self.selected_category].0),
+        );
         f.render_widget(shortcut_list, chunks[2]);
 
         let help = Paragraph::new("↑↓: Navigate categories | Esc: Close")
@@ -111,27 +128,35 @@ impl Component for HelpScreen {
         use crossterm::event::{Event, KeyCode, KeyEventKind};
 
         match event {
-            Event::Key(key) if key.kind == KeyEventKind::Press => {
-                match key.code {
-                    KeyCode::Up => {
-                        self.move_up();
-                        Ok(false)
-                    }
-                    KeyCode::Down => {
-                        self.move_down();
-                        Ok(false)
-                    }
-                    KeyCode::Esc => Ok(true),
-                    _ => Ok(false),
+            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Up => {
+                    self.move_up();
+                    Ok(false)
                 }
-            }
+                KeyCode::Down => {
+                    self.move_down();
+                    Ok(false)
+                }
+                KeyCode::Esc => Ok(true),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "help_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "help_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }

@@ -2,7 +2,12 @@
 
 use crate::ui::components::base::{Component, ComponentState};
 use crate::utils::error::TuiResult;
-use ratatui::{layout::Rect, Frame, widgets::{Paragraph, Block, Borders, List, ListItem}, style::{Style, Color, Modifier}};
+use ratatui::{
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame,
+};
 
 /// Settings screen - main settings hub
 pub struct SettingsScreen {
@@ -39,8 +44,7 @@ impl Component for SettingsScreen {
             "3. 💾 Data Management - Import, export, backup",
         ];
         let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(*item)).collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Settings Categories"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Settings Categories"));
         f.render_widget(list, chunks[1]);
 
         let help = Paragraph::new("1-3: Open Settings | Esc: Back to Menu")
@@ -48,12 +52,24 @@ impl Component for SettingsScreen {
             .block(Block::default().borders(Borders::ALL).title("Controls"));
         f.render_widget(help, chunks[2]);
     }
-    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> { Ok(false) }
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "settings_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn handle_input(&mut self, _event: crossterm::event::Event) -> TuiResult<bool> {
+        Ok(false)
+    }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "settings_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 /// Study preferences screen with interactive settings
@@ -118,7 +134,6 @@ impl StudyPrefsScreen {
             self.mark_dirty();
         }
     }
-
 }
 
 /// Study preferences settings
@@ -134,21 +149,31 @@ pub struct StudyPrefsSettings {
 impl Component for StudyPrefsScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
         let menu_items = vec![
-            format!("{} New cards per day: {}",
+            format!(
+                "{} New cards per day: {}",
                 if self.selected_index == 0 { "▶" } else { " " },
-                self.new_cards_per_day),
-            format!("{} Max reviews per day: {}",
+                self.new_cards_per_day
+            ),
+            format!(
+                "{} Max reviews per day: {}",
                 if self.selected_index == 1 { "▶" } else { " " },
-                self.max_reviews_per_day),
-            format!("{} Learning steps: {}",
+                self.max_reviews_per_day
+            ),
+            format!(
+                "{} Learning steps: {}",
                 if self.selected_index == 2 { "▶" } else { " " },
-                self.learning_steps),
-            format!("{} Auto-advance: {}",
+                self.learning_steps
+            ),
+            format!(
+                "{} Auto-advance: {}",
                 if self.selected_index == 3 { "▶" } else { " " },
-                if self.auto_advance { "On" } else { "Off" }),
-            format!("{} Show hint on question: {}",
+                if self.auto_advance { "On" } else { "Off" }
+            ),
+            format!(
+                "{} Show hint on question: {}",
                 if self.selected_index == 4 { "▶" } else { " " },
-                if self.show_hint_on_question { "On" } else { "Off" }),
+                if self.show_hint_on_question { "On" } else { "Off" }
+            ),
         ];
 
         let chunks = ratatui::layout::Layout::default()
@@ -166,8 +191,7 @@ impl Component for StudyPrefsScreen {
         f.render_widget(header, chunks[0]);
 
         let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(item.clone())).collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Settings"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Settings"));
         f.render_widget(list, chunks[1]);
 
         let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Ctrl+S: Save | Esc: Back")
@@ -250,11 +274,21 @@ impl Component for StudyPrefsScreen {
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "study_prefs_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "study_prefs_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 /// UI settings screen with interactive settings
@@ -318,24 +352,31 @@ impl UiSettingsScreen {
             self.mark_dirty();
         }
     }
-
 }
 
 impl Component for UiSettingsScreen {
     fn render(&self, f: &mut Frame, area: Rect, _focused: bool) {
         let menu_items = vec![
-            format!("{} Display name: {}",
+            format!(
+                "{} Display name: {}",
                 if self.selected_index == 0 { "▶" } else { " " },
-                self.display_name),
-            format!("{} Theme: {}",
+                self.display_name
+            ),
+            format!(
+                "{} Theme: {}",
                 if self.selected_index == 1 { "▶" } else { " " },
-                THEMES[self.theme_index]),
-            format!("{} Auto-advance: {}",
+                THEMES[self.theme_index]
+            ),
+            format!(
+                "{} Auto-advance: {}",
                 if self.selected_index == 2 { "▶" } else { " " },
-                if self.auto_advance { "On" } else { "Off" }),
-            format!("{} Show progress: {}",
+                if self.auto_advance { "On" } else { "Off" }
+            ),
+            format!(
+                "{} Show progress: {}",
                 if self.selected_index == 3 { "▶" } else { " " },
-                if self.show_progress { "On" } else { "Off" }),
+                if self.show_progress { "On" } else { "Off" }
+            ),
         ];
 
         let chunks = ratatui::layout::Layout::default()
@@ -353,8 +394,7 @@ impl Component for UiSettingsScreen {
         f.render_widget(header, chunks[0]);
 
         let items: Vec<ListItem> = menu_items.iter().map(|item| ListItem::new(item.clone())).collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Settings"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Settings"));
         f.render_widget(list, chunks[1]);
 
         let help = Paragraph::new("↑↓: Navigate | Enter: Toggle | ←→: Adjust | Ctrl+S: Save | Esc: Back")
@@ -426,11 +466,21 @@ impl Component for UiSettingsScreen {
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "ui_settings_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "ui_settings_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
 
 /// Data management screen with interactive operations
@@ -532,8 +582,7 @@ impl Component for DataManageScreen {
                 ListItem::new(format!("{} {}", prefix, op))
             })
             .collect();
-        let list = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title("Operations"));
+        let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Operations"));
         f.render_widget(list, chunks[1]);
 
         let footer_text = if self.status_message.is_empty() {
@@ -551,31 +600,39 @@ impl Component for DataManageScreen {
         use crossterm::event::{Event, KeyCode, KeyEventKind};
 
         match event {
-            Event::Key(key) if key.kind == KeyEventKind::Press => {
-                match key.code {
-                    KeyCode::Up => {
-                        self.move_up();
-                        Ok(false)
-                    }
-                    KeyCode::Down => {
-                        self.move_down();
-                        Ok(false)
-                    }
-                    KeyCode::Enter => {
-                        self.execute_operation();
-                        Ok(false)
-                    }
-                    KeyCode::Esc => Ok(true),
-                    _ => Ok(false),
+            Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Up => {
+                    self.move_up();
+                    Ok(false)
                 }
-            }
+                KeyCode::Down => {
+                    self.move_down();
+                    Ok(false)
+                }
+                KeyCode::Enter => {
+                    self.execute_operation();
+                    Ok(false)
+                }
+                KeyCode::Esc => Ok(true),
+                _ => Ok(false),
+            },
             _ => Ok(false),
         }
     }
 
-    fn update(&mut self) -> TuiResult<()> { Ok(()) }
-    fn can_focus(&self) -> bool { true }
-    fn id(&self) -> &str { "data_manage_screen" }
-    fn state(&self) -> &ComponentState { &self.state }
-    fn state_mut(&mut self) -> &mut ComponentState { &mut self.state }
+    fn update(&mut self) -> TuiResult<()> {
+        Ok(())
+    }
+    fn can_focus(&self) -> bool {
+        true
+    }
+    fn id(&self) -> &str {
+        "data_manage_screen"
+    }
+    fn state(&self) -> &ComponentState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut ComponentState {
+        &mut self.state
+    }
 }
