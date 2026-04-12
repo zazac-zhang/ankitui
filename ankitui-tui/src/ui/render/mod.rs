@@ -98,6 +98,15 @@ impl Renderer for DefaultRenderer {
             Screen::Settings => {
                 render_settings_with_real_data(f, area, app, state);
             }
+            Screen::DeckManagement => {
+                render_deck_management(f, area, app, state);
+            }
+            Screen::Search => {
+                render_search_screen(f, area, app, state);
+            }
+            Screen::Help => {
+                render_help_screen(f, area, app, state);
+            }
             _ => {
                 // Default to main menu
                 render_main_menu(f, area, 0);
@@ -626,4 +635,185 @@ fn format_session_time(started_at: chrono::DateTime<chrono::Utc>) -> String {
     let minutes = duration.num_minutes();
     let seconds = duration.num_seconds() % 60;
     format!("{}m {}s", minutes, seconds)
+}
+
+/// Deck management screen with real data
+fn render_deck_management(f: &mut ratatui::Frame, area: ratatui::layout::Rect, app: &crate::app::main_app::App, _state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders, List, ListItem},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    // Create main layout
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header
+            Constraint::Min(0),    // Deck list
+            Constraint::Length(3), // Help
+        ])
+        .split(area);
+
+    // Header
+    let header = Paragraph::new("🗂️ Manage Decks")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default()
+            .borders(Borders::ALL)
+            .title("Deck Management"));
+    f.render_widget(header, chunks[0]);
+
+    // Fetch real deck data
+    let deck_data = if let Ok(decks) = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks())
+    }) {
+        decks
+    } else {
+        Vec::new()
+    };
+
+    if deck_data.is_empty() {
+        let empty = Paragraph::new("No decks available.\n\nPress Ctrl+N to create a new deck.")
+            .style(Style::default().fg(Color::Gray))
+            .block(Block::default().borders(Borders::ALL).title("Empty"));
+        f.render_widget(empty, chunks[1]);
+    } else {
+        let items: Vec<ListItem> = deck_data
+            .iter()
+            .enumerate()
+            .map(|(i, (deck, cards))| {
+                let total = cards.len();
+                let due = cards.iter().filter(|c| c.state.due <= chrono::Utc::now()).count();
+                let new_count = cards.iter().filter(|c| matches!(c.state.state, ankitui_core::data::models::CardState::New)).count();
+                ListItem::new(format!(
+                    "📚 {} ({} cards, {} due, {} new)\n   Actions: Edit | Delete | Export | Stats",
+                    deck.name, total, due, new_count
+                ))
+            })
+            .collect();
+        let deck_list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Your Decks"));
+        f.render_widget(deck_list, chunks[1]);
+    }
+
+    // Help footer
+    let help_text = "↑↓: Navigate | Enter: Edit Deck | Ctrl+E: Edit | Delete: Remove Deck | Ctrl+N: New Deck | Esc: Back to Menu";
+    let help = Paragraph::new(help_text)
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
+}
+
+/// Search screen
+fn render_search_screen(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app: &crate::app::main_app::App, state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("🔍 Search")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Search"));
+    f.render_widget(header, chunks[0]);
+
+    let search_type = state.ui_state.get("search_type").map(|s| s.as_str()).unwrap_or("Decks");
+    let query = state.ui_state.get("search_query").map(|s| s.as_str()).unwrap_or("");
+    let prompt = Paragraph::new(format!("Type: {} | Query: {}", search_type, query))
+        .style(Style::default().fg(Color::Yellow))
+        .block(Block::default().borders(Borders::ALL).title("Search Parameters"));
+    f.render_widget(prompt, chunks[1]);
+
+    let info = Paragraph::new("Enter search terms above. Results will appear here.\nTab: Switch type | Type to search | Esc: Close")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Instructions"));
+    f.render_widget(info, chunks[2]);
+
+    let help = Paragraph::new("Tab: Switch Deck/Card | Type: Enter query | ↑↓: Navigate results | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[3]);
+}
+
+/// Help screen
+fn render_help_screen(f: &mut ratatui::Frame, area: ratatui::layout::Rect, _app: &crate::app::main_app::App, _state: &crate::ui::state::store::AppState) {
+    use ratatui::{
+        widgets::{Paragraph, Block, Borders, List, ListItem},
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style, Modifier},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Min(0),
+            Constraint::Length(3),
+        ])
+        .split(area);
+
+    let header = Paragraph::new("❓ Keyboard Shortcuts & Help")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Help"));
+    f.render_widget(header, chunks[0]);
+
+    let categories = [
+        ("Global Shortcuts", vec![
+            ("Ctrl+Q / Ctrl+C", "Quit application"),
+            ("F1 / ?", "Show this help"),
+            ("F5", "Refresh current screen"),
+            ("Esc", "Go back / Cancel"),
+        ]),
+        ("Navigation", vec![
+            ("Up / Down", "Navigate items"),
+            ("Left / Right", "Navigate tabs / Adjust values"),
+            ("Enter", "Confirm / Select / Execute"),
+            ("Tab", "Switch search type"),
+        ]),
+        ("Study Session", vec![
+            ("Space", "Show answer / Confirm"),
+            ("1", "Again - Review soon"),
+            ("2", "Hard - Review later"),
+            ("3", "Good - Normal interval"),
+            ("4", "Easy - Longer interval"),
+        ]),
+        ("Settings", vec![
+            ("Ctrl+S", "Save settings"),
+            ("Enter", "Toggle boolean option"),
+            ("Left / Right", "Adjust numeric values"),
+        ]),
+    ];
+
+    let cat_list: Vec<ListItem> = categories
+        .iter()
+        .map(|(name, _)| ListItem::new(format!("  {}", name)))
+        .collect();
+    let cat_widget = List::new(cat_list)
+        .block(Block::default().borders(Borders::ALL).title("Categories"));
+    f.render_widget(cat_widget, chunks[1]);
+
+    let (_, shortcuts) = &categories[0];
+    let shortcut_items: Vec<ListItem> = shortcuts
+        .iter()
+        .map(|(key, desc)| ListItem::new(format!("  {:20} {}", key, desc)))
+        .collect();
+    let shortcut_widget = List::new(shortcut_items)
+        .block(Block::default().borders(Borders::ALL).title("Global Shortcuts"));
+    f.render_widget(shortcut_widget, chunks[2]);
+
+    let help = Paragraph::new("Esc: Close")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[3]);
 }

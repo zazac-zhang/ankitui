@@ -303,6 +303,9 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Char('5'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
             Command::user(CommandType::Quit)
         }
+        (KeyCode::Char('/'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
+            Command::user(CommandType::StartSearch)
+        }
 
         // Study session keys - only active in study mode
         (KeyCode::Char('1'), KeyModifiers::NONE)
@@ -387,6 +390,8 @@ fn handle_navigation_up(screen: crate::ui::state::Screen, _current_state: &AppSt
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateUp),
+        crate::ui::state::Screen::Search => Command::user(CommandType::NavigateUp),
+        crate::ui::state::Screen::Help => Command::user(CommandType::NavigateUp),
         _ => Command::user(CommandType::NavigateUp),
     }
 }
@@ -397,6 +402,8 @@ fn handle_navigation_down(screen: crate::ui::state::Screen, _current_state: &App
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateDown),
+        crate::ui::state::Screen::Search => Command::user(CommandType::NavigateDown),
+        crate::ui::state::Screen::Help => Command::user(CommandType::NavigateDown),
         _ => Command::user(CommandType::NavigateDown),
     }
 }
@@ -472,6 +479,8 @@ fn handle_escape_contextual(screen: crate::ui::state::Screen, current_state: &Ap
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::CancelEdit),
         crate::ui::state::Screen::Settings => Command::user(CommandType::NavigateToMainMenu),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateToMainMenu),
+        crate::ui::state::Screen::Help => Command::user(CommandType::NavigateToMainMenu),
+        crate::ui::state::Screen::Search => Command::user(CommandType::NavigateToMainMenu),
         _ => Command::user(CommandType::NavigateBack),
     }
 }

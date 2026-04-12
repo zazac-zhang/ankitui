@@ -43,6 +43,8 @@ pub enum Screen {
     Settings,
     CardEditor,
     DeckManagement,
+    Search,
+    Help,
 }
 
 /// System message for user notifications

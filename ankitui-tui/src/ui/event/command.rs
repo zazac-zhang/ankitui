@@ -246,6 +246,8 @@ impl Command {
             CommandType::LoadUserPreferences | CommandType::UpdateUserPreferences(_) | CommandType::UpdateTheme(_) | CommandType::UpdateLanguage(_) | CommandType::UpdateStudyGoals(_, _) => matches!(screen, crate::ui::state::Screen::Settings),
             CommandType::LoadUserStats | CommandType::LoadStatistics(_) | CommandType::RefreshStatistics => matches!(screen, crate::ui::state::Screen::Statistics),
             CommandType::ShowMessage(_) | CommandType::ClearMessage | CommandType::SetLoading(_) | CommandType::ClearError => true,
+            CommandType::ShowHelp => matches!(screen, crate::ui::state::Screen::Help),
+            CommandType::SearchDecks(_) | CommandType::SearchCards(_) | CommandType::StartSearch => matches!(screen, crate::ui::state::Screen::Search),
             _ => false,
         }
     }

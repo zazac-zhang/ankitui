@@ -221,6 +221,14 @@ impl<'a> AppController<'a> {
                 }
             }
 
+            CommandType::ShowHelp => {
+                self.navigate_to_screen(Screen::Help).await?;
+            }
+
+            CommandType::SearchDecks(_) | CommandType::SearchCards(_) | CommandType::StartSearch => {
+                self.navigate_to_screen(Screen::Search).await?;
+            }
+
             CommandType::LoadStatistics(deck_id) => {
                 let _stats = self.load_deck_statistics(*deck_id).await?;
                 self.navigate_to_screen(Screen::Statistics).await?;

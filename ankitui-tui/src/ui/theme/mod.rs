@@ -1,16 +1,103 @@
 //! Theme system for the TUI application
 
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Style, Modifier};
 
-/// Theme configuration
+/// Available theme types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThemeType {
+    Default,
+    Dark,
+    Light,
+}
+
+impl ThemeType {
+    pub fn from_name(name: &str) -> Self {
+        match name.to_lowercase().as_str() {
+            "dark" => ThemeType::Dark,
+            "light" => ThemeType::Light,
+            _ => ThemeType::Default,
+        }
+    }
+    pub fn name(&self) -> &'static str {
+        match self {
+            ThemeType::Default => "default",
+            ThemeType::Dark => "dark",
+            ThemeType::Light => "light",
+        }
+    }
+}
+
+/// Color scheme for rendering
 #[derive(Debug, Clone)]
-pub struct Theme {
+pub struct ColorScheme {
+    pub header: Style,
+    pub selected: Style,
+    pub normal: Style,
+    pub warning: Style,
+    pub success: Style,
+    pub error: Style,
+    pub info: Style,
+    pub border: Style,
+}
+
+impl ColorScheme {
+    pub fn default_theme() -> Self {
+        Self {
+            header: Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            selected: Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            normal: Style::default(),
+            warning: Style::default().fg(Color::Yellow),
+            success: Style::default().fg(Color::Green),
+            error: Style::default().fg(Color::Red),
+            info: Style::default().fg(Color::Gray),
+            border: Style::default(),
+        }
+    }
+    pub fn dark_theme() -> Self {
+        Self {
+            header: Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            selected: Style::default().fg(Color::LightYellow).add_modifier(Modifier::BOLD),
+            normal: Style::default().fg(Color::DarkGray),
+            warning: Style::default().fg(Color::Yellow),
+            success: Style::default().fg(Color::Green),
+            error: Style::default().fg(Color::Red),
+            info: Style::default().fg(Color::DarkGray),
+            border: Style::default().fg(Color::DarkGray),
+        }
+    }
+    pub fn light_theme() -> Self {
+        Self {
+            header: Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD),
+            selected: Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            normal: Style::default().fg(Color::Black),
+            warning: Style::default().fg(Color::Yellow),
+            success: Style::default().fg(Color::Green),
+            error: Style::default().fg(Color::Red),
+            info: Style::default().fg(Color::Gray),
+            border: Style::default().fg(Color::Gray),
+        }
+    }
+    pub fn for_theme(theme: ThemeType) -> Self {
+        match theme {
+            ThemeType::Default => Self::default_theme(),
+            ThemeType::Dark => Self::dark_theme(),
+            ThemeType::Light => Self::light_theme(),
+        }
+    }
+}
+
+/// Theme configuration (alias for backward compatibility)
+pub type Theme = ThemeConfig;
+
+/// Theme configuration struct
+#[derive(Debug, Clone)]
+pub struct ThemeConfig {
     pub name: String,
     pub colors: ColorPalette,
     pub styles: StylePalette,
 }
 
-impl Default for Theme {
+impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
             name: "default".to_string(),
@@ -63,10 +150,10 @@ impl Default for StylePalette {
     fn default() -> Self {
         Self {
             normal: Style::default(),
-            focused: Style::default().add_modifier(ratatui::style::Modifier::REVERSED),
-            selected: Style::default().add_modifier(ratatui::style::Modifier::REVERSED),
+            focused: Style::default().add_modifier(Modifier::REVERSED),
+            selected: Style::default().add_modifier(Modifier::REVERSED),
             disabled: Style::default().fg(Color::DarkGray),
-            header: Style::default().add_modifier(ratatui::style::Modifier::BOLD),
+            header: Style::default().add_modifier(Modifier::BOLD),
             footer: Style::default(),
         }
     }
