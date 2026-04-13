@@ -2,6 +2,7 @@
 
 pub mod controller;
 pub mod event_loop;
+pub mod helpers;
 pub mod main_app;
 pub mod terminal;
 

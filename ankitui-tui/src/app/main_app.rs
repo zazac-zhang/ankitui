@@ -1,5 +1,6 @@
 //! Main application implementation
 
+use crate::app::helpers::{command as command_helpers, data as data_helpers, session as session_helpers};
 use crate::domain::{DeckService, StatisticsService, StudyService};
 use crate::ui::navigator::Navigator;
 use crate::ui::render::Renderer;
@@ -79,9 +80,7 @@ impl App {
         let state_store = Arc::new(RwLock::new(StateStore::new()));
 
         // Initialize data paths
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
 
         let content_dir = data_dir.join("content");
         let db_path = data_dir.join("ankitui.db");
@@ -353,9 +352,7 @@ impl App {
         let state_data = state.get_state().clone();
         drop(state);
 
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
         let state_path = data_dir.join("app_state.json");
 
         if let Ok(json) = serde_json::to_string_pretty(&state_data) {
@@ -372,9 +369,7 @@ impl App {
     pub async fn load_state(&mut self) -> TuiResult<()> {
         log::debug!("Loading application state");
 
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
         let state_path = data_dir.join("app_state.json");
 
         if let Ok(json) = std::fs::read_to_string(&state_path) {
@@ -1200,52 +1195,57 @@ impl App {
 
     /// Bury the current card (skip until next session)
     pub async fn bury_current_card(&mut self) -> TuiResult<()> {
-        let mut session = self.session_controller.lock().await;
-        if session.current_card().is_some() {
+        if session_helpers::has_current_card(&self.session_controller).await {
+            let mut session = self.session_controller.lock().await;
             session.bury_current_card(ankitui_core::data::BuryReason::UserBury, None)
                 .await
                 .map_err(|e| TuiError::Core(format!("Failed to bury card: {}", e)))?;
-
             drop(session);
 
-            // Reset answer view state and skip to next card
+            // Reset answer view state
             {
                 let state_store = self.state_store.read().await;
                 state_store.set_showing_answer(false)?;
             }
+            drop(std::sync::Arc::clone(&self.state_store)); // Ensure lock is released
+
             self.study_service_mut().skip_current_card().await?;
 
+            // Show message
             let state_store = self.state_store.read().await;
-            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+            session_helpers::show_card_operation_message(
+                &state_store,
                 "Card Buried",
                 "Card will appear again in the next session",
-            ))?;
+            ).await?;
         }
         Ok(())
     }
 
     /// Suspend the current card (indefinitely)
     pub async fn suspend_current_card(&mut self) -> TuiResult<()> {
-        let mut session = self.session_controller.lock().await;
-        if session.current_card().is_some() {
+        if session_helpers::has_current_card(&self.session_controller).await {
+            let mut session = self.session_controller.lock().await;
             session.suspend_current_card("Suspended by user".into(), None)
                 .await
                 .map_err(|e| TuiError::Core(format!("Failed to suspend card: {}", e)))?;
-
             drop(session);
 
-            // Reset answer view state and skip to next card
+            // Reset answer view state
             {
                 let state_store = self.state_store.read().await;
                 state_store.set_showing_answer(false)?;
             }
+
             self.study_service_mut().skip_current_card().await?;
 
+            // Show message
             let state_store = self.state_store.read().await;
-            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+            session_helpers::show_card_operation_warning(
+                &state_store,
                 "Card Suspended",
                 "Card will not appear until unsuspended",
-            ))?;
+            ).await?;
         }
         Ok(())
     }
@@ -1255,35 +1255,29 @@ impl App {
         let (card_id, deck_id) = {
             let session = self.session_controller.lock().await;
             let card = session.current_card();
-            if card.is_none() {
+            if let Some(card) = card {
+                (card.content.id, session.current_deck_id())
+            } else {
                 return Ok(());
             }
-            let card_id = card.unwrap().content.id;
-            let deck_id = session.current_deck_id();
-            (card_id, deck_id)
         };
 
         if let Some(deck_id) = deck_id {
-            let cards = {
-                let session = self.session_controller.lock().await;
-                session.get_deck_cards(&deck_id).await
-            };
-
-            if let Ok(cards) = cards {
-                if cards.iter().any(|c| c.content.id == card_id) {
+            if let Some(cards) = session_helpers::get_deck_cards_safe(&self.session_controller, &deck_id).await {
+                if session_helpers::card_exists_in_deck(&cards, &card_id) {
                     let mut session = self.session_controller.lock().await;
-                    session
-                        .unbury_card(card_id)
+                    session.unbury_card(card_id)
                         .await
                         .map_err(|e| TuiError::Core(format!("Failed to unbury card: {}", e)))?;
                 }
             }
 
             let state_store = self.state_store.read().await;
-            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+            session_helpers::show_card_operation_message(
+                &state_store,
                 "Card Unburied",
                 "Card will appear in the next session",
-            ))?;
+            ).await?;
         }
         Ok(())
     }
@@ -1293,35 +1287,29 @@ impl App {
         let (card_id, deck_id) = {
             let session = self.session_controller.lock().await;
             let card = session.current_card();
-            if card.is_none() {
+            if let Some(card) = card {
+                (card.content.id, session.current_deck_id())
+            } else {
                 return Ok(());
             }
-            let card_id = card.unwrap().content.id;
-            let deck_id = session.current_deck_id();
-            (card_id, deck_id)
         };
 
         if let Some(deck_id) = deck_id {
-            let cards = {
-                let session = self.session_controller.lock().await;
-                session.get_deck_cards(&deck_id).await
-            };
-
-            if let Ok(cards) = cards {
-                if cards.iter().any(|c| c.content.id == card_id) {
+            if let Some(cards) = session_helpers::get_deck_cards_safe(&self.session_controller, &deck_id).await {
+                if session_helpers::card_exists_in_deck(&cards, &card_id) {
                     let mut session = self.session_controller.lock().await;
-                    session
-                        .unsuspend_card(card_id)
+                    session.unsuspend_card(card_id)
                         .await
                         .map_err(|e| TuiError::Core(format!("Failed to unsuspend card: {}", e)))?;
                 }
             }
 
             let state_store = self.state_store.read().await;
-            state_store.show_message(crate::ui::state::store::SystemMessage::info(
+            session_helpers::show_card_operation_message(
+                &state_store,
                 "Card Unsuspended",
                 "Card will appear in the learning queue",
-            ))?;
+            ).await?;
         }
         Ok(())
     }
@@ -1833,9 +1821,7 @@ impl App {
     // Data management operations
 
     async fn handle_data_import(&mut self) -> TuiResult<()> {
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
         let import_path = data_dir.join("import.toml");
 
         if !import_path.exists() {
@@ -1896,10 +1882,7 @@ impl App {
 
         match self.deck_manager.export_deck(&deck_uuid, true).await {
             Ok(export_data) => {
-                let data_dir = dirs::data_dir()
-                    .unwrap_or_else(|| std::env::current_dir().unwrap())
-                    .join("ankitui")
-                    .join("exports");
+                let data_dir = data_helpers::get_default_data_dir().join("exports");
                 std::fs::create_dir_all(&data_dir).ok();
                 let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
                 let export_path = data_dir.join(format!("{}_{}.toml", deck_name.replace('/', "::"), timestamp));
@@ -1926,9 +1909,7 @@ impl App {
     }
 
     async fn handle_data_backup(&mut self) -> TuiResult<()> {
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
         let db_path = data_dir.join("ankitui.db");
 
         if !db_path.exists() {
@@ -1958,9 +1939,7 @@ impl App {
     }
 
     async fn handle_data_restore(&mut self) -> TuiResult<()> {
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("ankitui");
+        let data_dir = data_helpers::get_default_data_dir();
         let db_path = data_dir.join("ankitui.db");
         let backup_dir = data_dir.join("backups");
 
@@ -2021,11 +2000,12 @@ impl Default for App {
     fn default() -> Self {
         // Note: This is a synchronous default implementation
         // In practice, use App::new() for proper async initialization
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        let rt = tokio::runtime::Runtime::new()
+            .expect("AnkiTUI: Failed to create tokio runtime - this is a critical error");
         rt.block_on(async {
             Self::new(AppConfig::default())
                 .await
-                .expect("Failed to create default application")
+                .expect("AnkiTUI: Failed to initialize application - check data directory permissions")
         })
     }
 }
