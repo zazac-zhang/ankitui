@@ -70,6 +70,32 @@ impl DeckService {
             .await
             .map_err(|e| TuiError::Core(e.to_string()))
     }
+
+    /// Update deck configuration (new cards per day, max reviews per day)
+    pub async fn update_deck_config(
+        &self,
+        deck_uuid: &Uuid,
+        new_cards_per_day: u32,
+        max_reviews_per_day: u32,
+    ) -> TuiResult<()> {
+        // Fetch existing deck to preserve other scheduler config values
+        let (deck, _) = self
+            .get_deck(deck_uuid)
+            .await
+            .map_err(|e| TuiError::Core(format!("Deck not found: {}", e)))?;
+
+        let existing_config = deck.scheduler_config.unwrap_or_default();
+        let config = ankitui_core::data::SchedulerConfig {
+            new_cards_per_day: Some(new_cards_per_day as i32),
+            max_reviews_per_day: Some(max_reviews_per_day as i32),
+            ..existing_config
+        };
+
+        self.deck_manager
+            .update_deck_config(deck_uuid, config)
+            .await
+            .map_err(|e| TuiError::Core(e.to_string()))
+    }
 }
 
 /// Study Service - Manages study sessions and card reviews

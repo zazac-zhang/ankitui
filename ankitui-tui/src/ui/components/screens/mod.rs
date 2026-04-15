@@ -1,3 +1,7 @@
+//! DEPRECATED: This component is NOT connected to the runtime.
+//! The actual rendering is in `ui/render/mod.rs` via `render_*` functions.
+//! Do NOT modify this file expecting runtime behavior changes.
+//!
 //! Screen components for the TUI application
 
 // Screen modules

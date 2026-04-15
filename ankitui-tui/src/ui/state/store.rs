@@ -32,6 +32,12 @@ pub struct AppState {
 
     // Cached deck count
     pub deck_count: usize,
+
+    // Card viewer state
+    pub viewing_card_id: Option<Uuid>,
+
+    // Statistics screen state
+    pub stats_deck_selected_index: usize,
 }
 
 /// UI screen types
@@ -51,6 +57,8 @@ pub enum Screen {
     DataManage,
     TagManagement,
     MediaManagement,
+    CardViewer,
+    EditDeck,
 }
 
 /// System message for user notifications
@@ -160,6 +168,8 @@ impl Default for AppState {
             deck_list_selected: None,
             settings_selected: 0,
             deck_count: 0,
+            viewing_card_id: None,
+            stats_deck_selected_index: 0,
         }
     }
 }
@@ -536,6 +546,8 @@ impl AppState {
             deck_list_selected: None,
             settings_selected: 0,
             deck_count: 0,
+            viewing_card_id: None,
+            stats_deck_selected_index: 0,
         }
     }
 

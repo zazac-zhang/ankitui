@@ -1,3 +1,7 @@
+//! DEPRECATED: This component is NOT connected to the runtime.
+//! The actual rendering is in `ui/render/mod.rs` via `render_*` functions.
+//! Do NOT modify this file expecting runtime behavior changes.
+//!
 //! Common screen components used across the application
 
 use crate::ui::components::base::{Component, ComponentState, ContainerComponent};

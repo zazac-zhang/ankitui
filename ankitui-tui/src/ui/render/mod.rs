@@ -142,6 +142,12 @@ impl Renderer for DefaultRenderer {
             Screen::MediaManagement => {
                 render_media_management(f, area, app, state);
             }
+            Screen::CardViewer => {
+                render_card_viewer(f, area, app, state);
+            }
+            Screen::EditDeck => {
+                render_edit_deck(f, area, app, state);
+            }
             _ => {
                 // Default to main menu
                 render_main_menu(f, area, 0);
@@ -428,7 +434,7 @@ fn render_study_session_with_real_data(
 
     // Controls
     let controls_text = if state.is_showing_answer() {
-        "1-4: Rate (Again, Hard, Good, Easy) | Space: Hide Answer | PageUp/PageDown: Navigate Cards | Tab: Next | Esc: Pause Session"
+        "1-4: Rate & auto-confirm (Again/Hard/Good/Easy) | Space: Hide Answer | PageUp/PageDown: Navigate Cards | Tab: Next | Esc: Pause Session"
     } else {
         "Space: Show Answer | PageUp/PageDown: Navigate Cards | Tab: Next | Esc: Pause Session"
     };
@@ -530,7 +536,8 @@ fn render_statistics_with_real_data(
             if let Ok(decks) =
                 tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks()))
             {
-                let deck_stats_data: Vec<Vec<String>> = decks
+                let deck_count = decks.len();
+                let deck_stats_data: Vec<(String, Vec<String>)> = decks
                     .into_iter()
                     .map(|(deck, cards)| {
                         let total_cards = cards.len();
@@ -553,24 +560,35 @@ fn render_statistics_with_real_data(
                             "N/A".to_string()
                         };
 
-                        vec![
+                        (deck.name.clone(), vec![
                             deck.name,
                             total_cards.to_string(),
                             due_cards.to_string(),
                             retention,
-                        ]
+                        ])
                     })
                     .collect();
+
+                let selected_idx = state.stats_deck_selected_index.min(deck_count.saturating_sub(1));
 
                 let header_row = ["Deck", "Cards", "Due", "Retention"].iter().map(|h| {
                     ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
                 });
 
-                let rows = deck_stats_data.iter().map(|row| {
+                let rows = deck_stats_data.iter().enumerate().map(|(i, (_name, row))| {
                     let cells = row.iter().map(|s| ratatui::widgets::Cell::from(s.as_str()));
-                    Row::new(cells)
+                    Row::new(cells).style(if i == selected_idx {
+                        Style::default().bg(Color::DarkGray).fg(Color::White)
+                    } else {
+                        Style::default()
+                    })
                 });
 
+                let title = if deck_count > 0 {
+                    format!("Deck Statistics ({}) — Enter to drill", deck_count)
+                } else {
+                    "Deck Statistics".to_string()
+                };
                 let table = Table::new(
                     rows,
                     [
@@ -581,9 +599,21 @@ fn render_statistics_with_real_data(
                     ],
                 )
                 .header(Row::new(header_row))
-                .block(Block::default().borders(Borders::ALL).title("Deck Statistics"));
+                .block(Block::default().borders(Borders::ALL).title(title));
 
                 f.render_widget(table, chunks[2]);
+
+                // Store deck count in state for navigation boundary
+                let _ = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        let _ = app.state_store.read().await.update_state(|s| {
+                            s.ui_state.insert("stats_deck_count".to_string(), deck_count.to_string());
+                            if s.stats_deck_selected_index >= deck_count && deck_count > 0 {
+                                s.stats_deck_selected_index = deck_count - 1;
+                            }
+                        });
+                    });
+                });
             } else {
                 let error_msg = Paragraph::new("Failed to load deck statistics")
                     .style(Style::default().fg(Color::Red))
@@ -594,9 +624,9 @@ fn render_statistics_with_real_data(
         2 => {
             // Progress tab
             let progress_text = vec![
-                "📈 Your Learning Progress".to_string(),
+                "Your Learning Progress".to_string(),
                 "".to_string(),
-                format!("Study Streak: {} days", global_stats.total_decks), // Using available data
+                format!("Study Streak: 0 days (TODO: implement streak tracking)"),
                 format!("Cards Reviewed: {}", global_stats.review_cards),
                 "".to_string(),
                 "Keep up the great work!".to_string(),
@@ -792,7 +822,7 @@ fn render_deck_management(
 
                 let prefix = if i == selected_index { "▶ " } else { "  " };
                 let deck_text = format!(
-                    "{}{} ({} cards, {} due, {} new)\n   Actions: Enter: Study | E: Export | D: Delete | Esc: Back",
+                    "{}{} ({} cards, {} due, {} new)\n   Actions: Enter: Study | B: Browse | S: Stats | T: Tags | E: Export | D: Delete | Esc: Back",
                     prefix, deck.name, total, due, new_count
                 );
 
@@ -811,7 +841,7 @@ fn render_deck_management(
 
     // Help footer
     let help_text =
-        "↑↓: Navigate | Enter: Study | E: Export | D: Delete | Esc: Back to Menu";
+        "↑↓: Navigate | Enter: Study | B: Browse | S: Stats | T: Tags | E: Export | D: Delete | Esc: Back to Menu";
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
@@ -1001,11 +1031,11 @@ fn render_help_screen(
         (
             "Study Session",
             vec![
-                ("Space", "Show answer / Confirm"),
-                ("1", "Again - Review soon"),
-                ("2", "Hard - Review later"),
-                ("3", "Good - Normal interval"),
-                ("4", "Easy - Longer interval"),
+                ("Space", "Show / Hide answer"),
+                ("1", "Again - auto-confirm"),
+                ("2", "Hard - auto-confirm"),
+                ("3", "Good - auto-confirm"),
+                ("4", "Easy - auto-confirm"),
             ],
         ),
         (
@@ -1492,4 +1522,174 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{} B", bytes)
     }
+}
+
+/// Card viewer screen - read-only view of current card details
+fn render_card_viewer(
+    f: &mut ratatui::Frame,
+    area: ratatui::layout::Rect,
+    app: &crate::app::main_app::App,
+    state: &crate::ui::state::store::AppState,
+) {
+    use ratatui::{
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Modifier, Style},
+        widgets::{Block, Borders, List, ListItem, Paragraph},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Header
+            Constraint::Min(4),    // Card content
+            Constraint::Length(8), // Card metadata
+            Constraint::Length(3), // Help text
+        ])
+        .split(area);
+
+    // Header
+    let header = Paragraph::new("Card Viewer")
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Card Viewer"));
+    f.render_widget(header, chunks[0]);
+
+    // Get card from session controller
+    let (card_content, metadata_lines) = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            let session_controller = app.session_controller();
+            if let Some((_, card, _)) =
+                crate::app::helpers::session::get_current_card_info(session_controller).await
+            {
+                let content_lines = vec![
+                    format!("Front: {}", card.content.front),
+                    "".to_string(),
+                    format!("Back: {}", card.content.back),
+                    "".to_string(),
+                    if card.content.tags.is_empty() {
+                        "Tags: (none)".to_string()
+                    } else {
+                        format!("Tags: {}", card.content.tags.join(", "))
+                    },
+                ];
+
+                let state_label = match card.state.state {
+                    ankitui_core::data::models::CardState::New => "New",
+                    ankitui_core::data::models::CardState::Learning => "Learning",
+                    ankitui_core::data::models::CardState::Review => "Review",
+                    ankitui_core::data::models::CardState::Relearning => "Relearning",
+                    ankitui_core::data::models::CardState::Buried => "Buried",
+                    ankitui_core::data::models::CardState::Suspended => "Suspended",
+                };
+
+                let meta_lines = vec![
+                    format!("State: {}", state_label),
+                    format!("Interval: {} days", card.state.interval),
+                    format!("Ease Factor: {:.0}%", card.state.ease_factor * 100.0),
+                    format!("Repetitions: {}", card.state.reps),
+                    format!("Lapses: {}", card.state.lapses),
+                ];
+
+                (content_lines, meta_lines)
+            } else {
+                (
+                    vec![
+                        "No card available.".to_string(),
+                        "Start a study session to view cards.".to_string(),
+                    ],
+                    Vec::new(),
+                )
+            }
+        })
+    });
+
+    // Card content (front/back/tags)
+    let content_items: Vec<ListItem> = card_content.iter().map(|line| ListItem::new(line.as_str())).collect();
+    let content_list = List::new(content_items).block(Block::default().borders(Borders::ALL).title("Card Content"));
+    f.render_widget(content_list, chunks[1]);
+
+    // Card metadata
+    let meta_items: Vec<ListItem> = metadata_lines.iter().map(|line| ListItem::new(line.as_str())).collect();
+    let meta_list = List::new(meta_items).block(Block::default().borders(Borders::ALL).title("Card Details"));
+    f.render_widget(meta_list, chunks[2]);
+
+    // Help footer
+    let help_text = "Esc: Back | B: Bury | Ctrl+S: Suspend | U: Unbury | Ctrl+U: Unsuspend";
+    let help = Paragraph::new(help_text)
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[3]);
+}
+
+/// F13.3: Edit deck configuration screen
+fn render_edit_deck(
+    f: &mut ratatui::Frame,
+    area: ratatui::layout::Rect,
+    _app: &crate::app::main_app::App,
+    state: &crate::ui::state::store::AppState,
+) {
+    use ratatui::{
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Modifier, Style},
+        widgets::{Block, Borders, List, ListItem, Paragraph},
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
+        .split(area);
+
+    let deck_name = state.ui_state.get("edit_deck_name").cloned().unwrap_or_else(|| "Unknown".to_string());
+    let header = Paragraph::new(format!("Edit Deck: {}", deck_name))
+        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Edit Deck"));
+    f.render_widget(header, chunks[0]);
+
+    let focus = state.ui_state.get("edit_focus_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(2);
+
+    let new_cards = state.ui_state.get("edit_new_cards").cloned().unwrap_or_else(|| "20".to_string());
+    let max_reviews = state.ui_state.get("edit_max_reviews").cloned().unwrap_or_else(|| "200".to_string());
+    let desc = state.ui_state.get("edit_deck_desc").cloned().unwrap_or_default();
+
+    let focus_indicator = |i: usize| if i == focus { "▶" } else { " " };
+
+    let items = vec![
+        format!(
+            "  Name:          {} (CLI: ankitui edit-deck <uuid> --name <name>)",
+            deck_name
+        ),
+        format!(
+            "  Description:   {} (CLI: ankitui edit-deck <uuid> --desc <desc>)",
+            if desc.is_empty() { "(none)" } else { &desc }
+        ),
+        format!(
+            "{} New cards/day:      {}",
+            focus_indicator(2),
+            new_cards
+        ),
+        format!(
+            "{} Max reviews/day:    {}",
+            focus_indicator(3),
+            max_reviews
+        ),
+    ];
+
+    let list_items: Vec<ListItem> = items
+        .iter()
+        .enumerate()
+        .map(|(i, text)| {
+            ListItem::new(text.clone()).style(if i == focus {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            })
+        })
+        .collect();
+
+    let list = List::new(list_items).block(Block::default().borders(Borders::ALL).title("Deck Configuration"));
+    f.render_widget(list, chunks[1]);
+
+    let help = Paragraph::new("↑↓: Navigate | ←→: Adjust | Ctrl+S: Save | Esc: Back")
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+    f.render_widget(help, chunks[2]);
 }

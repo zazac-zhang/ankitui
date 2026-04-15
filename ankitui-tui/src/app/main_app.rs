@@ -471,6 +471,30 @@ impl App {
                             _ => Ok(()),
                         }?;
                     }
+                    crate::ui::state::store::Screen::EditDeck => {
+                        // Ctrl+S on edit deck screen: save deck configuration
+                        let deck_id = self.state_store.read().await.get_state()
+                            .ui_state.get("editing_deck_id").and_then(|s| s.parse::<Uuid>().ok());
+                        if let Some(deck_id) = deck_id {
+                            let new_cards = self.state_store.read().await.get_state()
+                                .ui_state.get("edit_new_cards").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
+                            let max_reviews = self.state_store.read().await.get_state()
+                                .ui_state.get("edit_max_reviews").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
+                            if let Err(e) = self.deck_service.update_deck_config(&deck_id, new_cards, max_reviews).await {
+                                log::warn!("Failed to update deck config: {}", e);
+                                let state_store = self.state_store.read().await;
+                                state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                                    "Save Failed", &format!("Could not update deck: {}", e),
+                                ))?;
+                            } else {
+                                self.state_store.read().await.navigate_to(crate::ui::state::store::Screen::DeckManagement).ok();
+                                let state_store = self.state_store.read().await;
+                                state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                                    "Deck Updated", "Deck configuration saved successfully",
+                                ))?;
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -532,6 +556,27 @@ impl App {
                     state.ui_state.insert("stats_tab".to_string(), new_idx.to_string());
                 }).ok();
             }
+            CommandType::DrillIntoDeckStats => {
+                let selected_idx = {
+                    let state = self.state_store.read().await.get_state();
+                    let deck_count = state.ui_state.get("stats_deck_count").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                    state.stats_deck_selected_index.min(deck_count.saturating_sub(1))
+                };
+
+                let decks = self.deck_service.get_all_decks().await?;
+                if selected_idx < decks.len() {
+                    let (deck, _) = &decks[selected_idx];
+                    let deck_id = deck.uuid;
+
+                    self.state_store.read().await.set_selected_deck(Some(deck_id)).ok();
+                    self.state_store.read().await.show_message(
+                        crate::ui::state::store::SystemMessage::info(
+                            "Deck Selected",
+                            &format!("Drilling into '{}' statistics", deck.name),
+                        )
+                    ).ok();
+                }
+            }
             CommandType::Select => {
                 let current_screen = {
                     let state_store = self.state_store.read().await;
@@ -591,11 +636,150 @@ impl App {
             CommandType::UnsuspendCard => {
                 self.unsuspend_current_card().await?;
             }
+            CommandType::ViewCard => {
+                // Get current card from session controller
+                if let Some((_, card, _)) = session_helpers::get_current_card_info(&self.session_controller).await {
+                    self.state_store.read().await.update_state(|state| {
+                        state.viewing_card_id = Some(card.content.id);
+                    }).ok();
+                    self.state_store.read().await.navigate_to(crate::ui::state::store::Screen::CardViewer).ok();
+                }
+            }
             CommandType::DeleteSelectedTag => {
                 self.delete_selected_tag().await?;
             }
             CommandType::CleanOrphanedMedia => {
                 self.clean_orphaned_media().await?;
+            }
+            // F13.3: Navigate to edit deck screen
+            CommandType::EditDeck => {
+                let selected_index = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_deck_list_selected().unwrap_or(0)
+                };
+                let decks = self.deck_service.get_all_decks().await?;
+                if selected_index < decks.len() {
+                    let (deck, _) = &decks[selected_index];
+                    let deck_id = deck.uuid;
+                    let config = deck.scheduler_config.as_ref();
+                    let new_cards = config.and_then(|c| c.new_cards_per_day).unwrap_or(20) as u32;
+                    let max_reviews = config.and_then(|c| c.max_reviews_per_day).unwrap_or(200) as u32;
+                    self.state_store.read().await.update_state(|state| {
+                        state.ui_state.insert("editing_deck_id".to_string(), deck_id.to_string());
+                        state.ui_state.insert("edit_deck_name".to_string(), deck.name.clone());
+                        state.ui_state.insert("edit_deck_desc".to_string(), deck.description.clone().unwrap_or_default());
+                        state.ui_state.insert("edit_new_cards".to_string(), new_cards.to_string());
+                        state.ui_state.insert("edit_max_reviews".to_string(), max_reviews.to_string());
+                        state.ui_state.insert("edit_focus_index".to_string(), "2".to_string());
+                    }).ok();
+                    self.state_store.read().await.navigate_to(crate::ui::state::store::Screen::EditDeck).ok();
+                } else {
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                        "No Deck Selected", "Select a deck to edit",
+                    ))?;
+                }
+            }
+            // F13.3: Save edited deck configuration
+            CommandType::SaveEditDeck => {
+                let deck_id = self.state_store.read().await.get_state()
+                    .ui_state.get("editing_deck_id").and_then(|s| s.parse::<Uuid>().ok());
+                if let Some(deck_id) = deck_id {
+                    let new_cards = self.state_store.read().await.get_state()
+                        .ui_state.get("edit_new_cards").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
+                    let max_reviews = self.state_store.read().await.get_state()
+                        .ui_state.get("edit_max_reviews").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
+                    if let Err(e) = self.deck_service.update_deck_config(&deck_id, new_cards, max_reviews).await {
+                        log::warn!("Failed to update deck config: {}", e);
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                            "Save Failed", &format!("Could not update deck: {}", e),
+                        ))?;
+                    } else {
+                        self.state_store.read().await.navigate_to(crate::ui::state::store::Screen::DeckManagement).ok();
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                            "Deck Updated", "Deck configuration saved successfully",
+                        ))?;
+                    }
+                }
+            }
+            CommandType::BrowseDeck => {
+                // Navigate to Search screen with the selected deck pre-filtered
+                let selected_index = {
+                    let state = self.state_store.read().await;
+                    state.get_deck_list_selected().unwrap_or(0)
+                };
+                let decks = self.deck_service.get_all_decks().await?;
+                if selected_index < decks.len() {
+                    let (deck, _) = &decks[selected_index];
+                    let state_store = self.state_store.read().await;
+                    state_store.navigate_to(crate::ui::state::store::Screen::Search)?;
+                    state_store.update_state(|state| {
+                        state.ui_state.insert("search_type".to_string(), "Cards".to_string());
+                        state.ui_state.insert("search_query".to_string(), String::new());
+                        state.ui_state.insert("search_result_index".to_string(), "0".to_string());
+                        // Store the deck name for pre-filter hint
+                        state.ui_state.insert("browse_deck_name".to_string(), deck.name.clone());
+                    }).ok();
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                        "Browse Cards",
+                        &format!("Browsing cards in '{}'. Type to filter.", deck.name),
+                    ))?;
+                } else {
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                        "Browse Cards",
+                        "No deck selected. Select a deck first, then browse.",
+                    ))?;
+                }
+            }
+            CommandType::ViewDeckStats => {
+                // Navigate to Statistics screen with the selected deck
+                let selected_index = {
+                    let state = self.state_store.read().await;
+                    state.get_deck_list_selected().unwrap_or(0)
+                };
+                let decks = self.deck_service.get_all_decks().await?;
+                if selected_index < decks.len() {
+                    let (deck, _) = &decks[selected_index];
+                    let deck_id = deck.uuid;
+                    let state_store = self.state_store.read().await;
+                    state_store.navigate_to(crate::ui::state::store::Screen::Statistics)?;
+                    state_store.update_state(|state| {
+                        // Switch to Deck Stats tab (index 1)
+                        state.ui_state.insert("stats_tab".to_string(), "1".to_string());
+                        // Store the deck name for display
+                        state.ui_state.insert("view_deck_name".to_string(), deck.name.clone());
+                    }).ok();
+                    // Set selected deck so Statistics can use it
+                    let state_store = self.state_store.read().await;
+                    state_store.set_selected_deck(Some(deck_id))?;
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                        "Deck Statistics",
+                        &format!("Viewing statistics for '{}'", deck.name),
+                    ))?;
+                } else {
+                    let state_store = self.state_store.read().await;
+                    state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                        "Deck Statistics",
+                        "No deck selected. Select a deck first, then view stats.",
+                    ))?;
+                }
+            }
+            CommandType::NavigateToTagManagement => {
+                let state_store = self.state_store.read().await;
+                state_store.navigate_to(crate::ui::state::store::Screen::TagManagement)?;
+                state_store.update_state(|state| {
+                    state.ui_state.entry("tag_index".to_string()).or_insert("0".to_string());
+                }).ok();
+                let state_store = self.state_store.read().await;
+                state_store.show_message(crate::ui::state::store::SystemMessage::info(
+                    "Tag Management",
+                    "Browse and manage tags. Press D to delete a tag.",
+                ))?;
             }
             CommandType::CreateDeckPrompt => {
                 // Navigate to deck management with create intent
@@ -1048,6 +1232,26 @@ impl App {
                         let new_idx = if is_decrement { idx.saturating_sub(1) } else { (idx + 1).min(ops_count - 1) };
                         state.ui_state.insert("data_index".to_string(), new_idx.to_string());
                     }).ok();
+                } else if matches!(screen, crate::ui::state::store::Screen::EditDeck) {
+                    // EditDeck: adjust numeric fields based on focus
+                    self.state_store.read().await.update_state(|state| {
+                        let focus = state.ui_state.get("edit_focus_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(2);
+                        match focus {
+                            2 => {
+                                // new_cards_per_day
+                                let val = state.ui_state.get("edit_new_cards").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20);
+                                let new_val = if is_decrement { val.saturating_sub(5) } else { val + 5 };
+                                state.ui_state.insert("edit_new_cards".to_string(), new_val.to_string());
+                            }
+                            3 => {
+                                // max_reviews_per_day
+                                let val = state.ui_state.get("edit_max_reviews").and_then(|s| s.parse::<u32>().ok()).unwrap_or(200);
+                                let new_val = if is_decrement { val.saturating_sub(10) } else { val + 10 };
+                                state.ui_state.insert("edit_max_reviews".to_string(), new_val.to_string());
+                            }
+                            _ => {}
+                        }
+                    }).ok();
                 }
             }
             CommandType::NavigateUp => {
@@ -1130,6 +1334,24 @@ impl App {
                             if idx > 0 { state.ui_state.insert("media_index".to_string(), (idx - 1).to_string()); }
                         }).ok();
                     }
+                    crate::ui::state::store::Screen::Statistics => {
+                        // Deck Stats table row navigation
+                        self.state_store.read().await.update_state(|state| {
+                            let deck_count = state.ui_state.get("stats_deck_count").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if deck_count > 0 && state.stats_deck_selected_index > 0 {
+                                state.stats_deck_selected_index -= 1;
+                            }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::EditDeck => {
+                        // Navigate focus up (2=new_cards, 3=max_reviews)
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("edit_focus_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(2);
+                            if idx > 2 {
+                                state.ui_state.insert("edit_focus_index".to_string(), (idx - 1).to_string());
+                            }
+                        }).ok();
+                    }
                     _ => {}
                 }
             }
@@ -1207,6 +1429,24 @@ impl App {
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("media_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
                             if idx < 8 { state.ui_state.insert("media_index".to_string(), (idx + 1).to_string()); }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::Statistics => {
+                        // Deck Stats table row navigation
+                        self.state_store.read().await.update_state(|state| {
+                            let deck_count = state.ui_state.get("stats_deck_count").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                            if state.stats_deck_selected_index < deck_count.saturating_sub(1) {
+                                state.stats_deck_selected_index += 1;
+                            }
+                        }).ok();
+                    }
+                    crate::ui::state::store::Screen::EditDeck => {
+                        // Navigate focus down (2=new_cards, 3=max_reviews)
+                        self.state_store.read().await.update_state(|state| {
+                            let idx = state.ui_state.get("edit_focus_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(2);
+                            if idx < 3 {
+                                state.ui_state.insert("edit_focus_index".to_string(), (idx + 1).to_string());
+                            }
                         }).ok();
                     }
                     _ => {}

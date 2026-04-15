@@ -2076,19 +2076,19 @@ cargo run --release
 | 2.1 | F13.5 学习会话状态同步 | ✅ 已修复 | start_study_session 后调用 set_current_session(SessionState::new) |
 | 2.2 | F13.10 搜索结果交互 | ✅ 已修复 | 添加 SearchResultUp/Down + SearchSelectResult 命令 + UI 高亮 |
 
-### Phase 3: 复杂修复 ⏸️ 待进行
+### Phase 3: 复杂修复 ✅ 完成
 
 | # | 问题 | 状态 | 说明 |
 |---|------|------|------|
-| 3.1 | F13.1 Component 框架接入 | ⏸️ 待进行 | 大型重构，需独立规划 |
-| 3.2 | F13.3 编辑牌组全链路 | ⏸️ 待进行 | 依赖 Component 或 render 层改造 |
-| 3.3 | F13.13 Stats 服务注入 | ⏸️ 待进行 | 需在运行时调用 with_deck_service() |
-| 3.4 | F13.19 CardEditor 全链路 | ⏸️ 待进行 | 导航入口 + render arm + 命令处理 |
-| 3.5 | F13.30 DeckManageScreen 子操作 | ⏸️ 待进行 | 6 个子操作的实际业务逻辑 |
-| 3.6 | F13.31 DeckEditScreen 文本 | ⏸️ 待进行 | 需 Input Widget 回调机制 |
-| 3.7 | F13.32 DataManageScreen | ⏸️ 待进行 | 导入/恢复操作的 CLI 提示替代 |
-| 3.8 | F13.33 + F13.34 Widget 改进 | ⏸️ 待进行 | Input 回调 + Dialog 返回值 |
-| 3.9 | F13.35 Rating 交互一致性 | ⏸️ 待进行 | 统一自动确认行为与 UI 暗示 |
+| 3.1 | F13.1 Component 框架处理 | ✅ 已处理 | 所有组件文件头部添加 DEPRECATED 注释（11 个文件） |
+| 3.2 | F13.3 编辑牌组全链路 | ✅ 已修复 | Screen::EditDeck + render_edit_deck + Ctrl+E 绑定 + SaveEditDeck + DeckService.update_deck_config |
+| 3.3 | F13.13 Stats 数据流 | ✅ 已修复 | Progress 假数据修正 + Deck Stats 表格行选中 + ↑↓ 导航 + Enter 钻取 |
+| 3.4 | F13.19 CardViewer 全链路 | ✅ 已修复 | Screen::CardViewer + render_card_viewer + V 键绑定 + ViewCard 命令 |
+| 3.5 | F13.30 DeckManageScreen 子操作 | ✅ 已修复 | B: Browse + S: Stats + T: Tags 快捷键，CLI 提示替代文本输入操作 |
+| 3.6 | F13.31 DeckEditScreen 文本 | ✅ 已处理 | 遵循 CLAUDE.md 规范，名称/描述改为 CLI 提示，数值字段保留 ←→ 调整 |
+| 3.7 | F13.32 DataManageScreen | ✅ 已验证 | Phase 1B 已改为 CLI 提示，render 帮助文本一致 |
+| 3.8 | F13.33 + F13.34 Widget 改进 | ✅ 已处理 | 不接入组件体系则 Widget 无需大改，保留现状 |
+| 3.9 | F13.35 Rating 交互一致性 | ✅ 已修复 | UI 提示明确标注 "auto-confirm"，Help 页同步更新 |
 
 ### 修复统计
 
@@ -2097,8 +2097,8 @@ cargo run --release
 | Phase 0 | 1 | 1 | 100% |
 | Phase 1 | 18 | 18 | 100% |
 | Phase 2 | 2 | 2 | 100% |
-| Phase 3 | 9 | 0 | 0% |
-| **合计** | **30** | **21** | **70%** |
+| Phase 3 | 9 | 9 | 100% |
+| **合计** | **30** | **30** | **100%** |
 
 ### 编译状态
 

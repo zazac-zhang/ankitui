@@ -104,6 +104,7 @@ pub enum CommandType {
     RefreshStatistics,
     ScrollStatsUp,
     ScrollStatsDown,
+    DrillIntoDeckStats,
 
     // Mouse interaction commands
     Click(u16, u16),
@@ -125,12 +126,22 @@ pub enum CommandType {
     SuspendCard,
     UnburyCard,
     UnsuspendCard,
+    ViewCard,
 
     // Tag management
     DeleteSelectedTag,
+    NavigateToTagManagement,
+
+    // Deck management sub-actions
+    BrowseDeck,
+    ViewDeckStats,
 
     // Media management
     CleanOrphanedMedia,
+
+    // F13.3: Edit deck
+    EditDeck,
+    SaveEditDeck,
 }
 
 /// Command wrapper with metadata

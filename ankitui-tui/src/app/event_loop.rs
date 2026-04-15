@@ -342,6 +342,11 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             Command::user(CommandType::UnsuspendCard)
         }
 
+        // Study session: view current card details
+        (KeyCode::Char('v'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::StudySession => {
+            Command::user(CommandType::ViewCard)
+        }
+
         // Tag management: delete selected tag
         (KeyCode::Char('d'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::TagManagement => {
             Command::user(CommandType::DeleteSelectedTag)
@@ -355,6 +360,23 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         // Deck management: export selected deck to TOML
         (KeyCode::Char('e'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
             Command::user(CommandType::ExportDeck)
+        }
+        // Deck management: browse cards in selected deck
+        (KeyCode::Char('b'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::BrowseDeck)
+        }
+        // Deck management: view deck statistics
+        (KeyCode::Char('s'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::ViewDeckStats)
+        }
+        // Deck management: navigate to tag management
+        (KeyCode::Char('t'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::NavigateToTagManagement)
+        }
+
+        // F13.3: Edit selected deck configuration (Ctrl+E to avoid conflict with ExportDeck)
+        (KeyCode::Char('e'), KeyModifiers::CONTROL) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::EditDeck)
         }
 
         // Media management: clean orphaned media
@@ -385,6 +407,11 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         }
         (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Statistics => {
             Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Statistics))
+        }
+
+        // F13.13: Statistics Deck Stats tab: Enter to drill into selected deck
+        (KeyCode::Enter, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Statistics => {
+            Command::user(CommandType::DrillIntoDeckStats)
         }
 
         // F13.9: Settings screen number key navigation
