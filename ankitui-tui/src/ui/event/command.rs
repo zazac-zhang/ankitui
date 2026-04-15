@@ -42,6 +42,7 @@ pub enum CommandType {
     StartStudySession(Uuid, Option<u32>),
     CreateDeck(String, Option<String>),
     CreateDeckPrompt,
+    ExportDeck,
     DeleteDeck(Uuid),
     DeleteDeckPrompt,
     UpdateDeck(Uuid, String, Option<String>),
@@ -93,6 +94,9 @@ pub enum CommandType {
     SearchCards(String),
     StartSearch,
     SearchBackspace,
+    SearchSelectResult,
+    SearchResultUp,
+    SearchResultDown,
     ImportCards(String),
 
     // Statistics commands

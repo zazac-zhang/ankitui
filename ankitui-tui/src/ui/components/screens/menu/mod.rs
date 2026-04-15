@@ -29,7 +29,6 @@ impl MenuScreen {
         "🗂️ Manage Decks",
         "📊 Statistics",
         "⚙️ Settings",
-        "❌ Quit",
     ];
 
     pub fn get_selected_index(&self) -> usize {
@@ -82,7 +81,7 @@ impl Component for MenuScreen {
                 ..area
             };
 
-            let help_text = "↑↓: Navigate | Enter: Select | Esc: Quit";
+            let help_text = "↑↓: Navigate | Enter: Select | Q/Esc: Quit";
             let help = Paragraph::new(help_text).style(Style::default().fg(Color::Cyan));
 
             f.render_widget(help, help_area);
@@ -108,9 +107,8 @@ impl Component for MenuScreen {
                         Ok(true)
                     }
                     KeyCode::Char('q') | KeyCode::Esc => {
-                        // Select quit option
-                        self.selected_index = Self::MENU_ITEMS.len() - 1;
-                        Ok(true)
+                        // Signal quit - let the event loop handle it
+                        Ok(false)
                     }
                     _ => Ok(false),
                 }

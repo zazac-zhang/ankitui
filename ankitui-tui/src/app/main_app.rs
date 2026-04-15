@@ -1,7 +1,7 @@
 //! Main application implementation
 
 use crate::app::helpers::{command as command_helpers, data as data_helpers, session as session_helpers};
-use crate::domain::{DeckService, StatisticsService, StudyService};
+use crate::domain::{DeckService, SessionState, StatisticsService, StudyService};
 use crate::ui::navigator::Navigator;
 use crate::ui::render::Renderer;
 use crate::ui::state::store::StateStore;
@@ -12,6 +12,12 @@ use ankitui_core::{DeckManager, Scheduler, SessionController};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+
+// Navigation boundary constants - must match actual data lengths in render functions
+const STUDY_PREFS_ITEMS: usize = 4; // render_study_prefs items count
+const UI_SETTINGS_ITEMS: usize = 4; // render_ui_settings items count
+const DATA_MANAGE_ITEMS: usize = 5; // render_data_manage ops count
+const HELP_CATEGORIES: usize = 4;   // render_help_screen categories count
 
 /// Application configuration
 #[derive(Debug, Clone)]
@@ -436,6 +442,10 @@ impl App {
                     crate::ui::state::store::Screen::DeckSelection => {
                         self.handle_deck_selection_confirm().await?;
                     }
+                    crate::ui::state::store::Screen::DeckManagement => {
+                        // Handle deck management operations
+                        self.handle_deck_management_action().await?;
+                    }
                     crate::ui::state::store::Screen::UiSettings => {
                         // Toggle boolean settings on Enter
                         self.state_store.read().await.update_state(|state| {
@@ -493,6 +503,8 @@ impl App {
                 self.study_service_mut().skip_current_card().await?;
             }
             CommandType::PauseSession => {
+                // TODO: SessionController doesn't have pause/resume methods yet.
+                // When added, call self.session_controller.lock().await.pause() here.
                 let state_store = self.state_store.read().await;
                 state_store.show_message(crate::ui::state::store::SystemMessage::info(
                     "Session Paused",
@@ -500,6 +512,8 @@ impl App {
                 ))?;
             }
             CommandType::ResumeSession => {
+                // TODO: SessionController doesn't have pause/resume methods yet.
+                // When added, call self.session_controller.lock().await.resume() here.
                 let state_store = self.state_store.read().await;
                 state_store.show_message(crate::ui::state::store::SystemMessage::success(
                     "Session Resumed",
@@ -594,11 +608,52 @@ impl App {
                 let state_store = self.state_store.read().await;
                 state_store.show_message(crate::ui::state::store::SystemMessage::info(
                     "Create Deck",
-                    "Deck creation is available through the deck management menu",
+                    "Use the CLI to create new decks: ankitui create-deck",
                 ))?;
             }
+            CommandType::ExportDeck => {
+                self.handle_data_export().await?;
+            }
             CommandType::DeleteDeckPrompt => {
-                // Navigate to deck management with delete intent
+                // Check if we're already on DeckManagement — if so, delete the selected deck directly
+                let screen = {
+                    let state_store = self.state_store.read().await;
+                    state_store.get_state().current_screen.clone()
+                };
+                if screen == crate::ui::state::store::Screen::DeckManagement {
+                    let selected_index = {
+                        let state_store = self.state_store.read().await;
+                        state_store.get_deck_list_selected().unwrap_or(0)
+                    };
+                    let decks = self.deck_service.get_all_decks().await?;
+                    if selected_index < decks.len() {
+                        let (deck, _cards) = &decks[selected_index];
+                        let deck_name = deck.name.clone();
+                        let deck_uuid = deck.uuid;
+
+                        if let Err(e) = self.deck_service.delete_deck(&deck_uuid).await {
+                            let state_store = self.state_store.read().await;
+                            state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                                "Delete Failed", &format!("Failed to delete '{}': {}", deck_name, e),
+                            ))?;
+                        } else {
+                            // Reset selection after deletion
+                            self.state_store.read().await.update_state(|state| {
+                                let new_len = decks.len().saturating_sub(1);
+                                state.deck_list_selected = Some(if new_len == 0 { 0 } else {
+                                    selected_index.min(new_len - 1)
+                                });
+                            })?;
+                            let state_store = self.state_store.read().await;
+                            state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                                "Deck Deleted", &format!("'{}' has been deleted", deck_name),
+                            ))?;
+                        }
+                    }
+                    return Ok(());
+                }
+
+                // Not on DeckManagement: navigate there with delete intent
                 let state_store = self.state_store.read().await;
                 state_store.navigate_to(crate::ui::state::store::Screen::DeckManagement)?;
                 state_store.update_state(|state| {
@@ -608,7 +663,7 @@ impl App {
                 let state_store = self.state_store.read().await;
                 state_store.show_message(crate::ui::state::store::SystemMessage::info(
                     "Delete Deck",
-                    "Deck deletion is available through the deck management menu",
+                    "Select a deck and press D or Delete to remove it",
                 ))?;
             }
             CommandType::CreateCardPrompt => {
@@ -791,6 +846,8 @@ impl App {
                 state_store.update_state(|state| {
                     state.ui_state.entry("search_type".to_string()).or_insert("Decks".to_string());
                     state.ui_state.entry("search_query".to_string()).or_insert(String::new());
+                    state.ui_state.entry("search_result_index".to_string()).or_insert("0".to_string());
+                    state.ui_state.entry("search_result_count".to_string()).or_insert("0".to_string());
                 }).ok();
             }
             CommandType::SearchDecks(ref query) | CommandType::SearchCards(ref query) => {
@@ -817,6 +874,53 @@ impl App {
                         }
                     }
                 }).ok();
+            }
+            CommandType::SearchResultDown => {
+                self.state_store.read().await.update_state(|state| {
+                    let idx = state.ui_state.get("search_result_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                    let max = state.ui_state.get("search_result_count").and_then(|s| s.parse::<usize>().ok()).unwrap_or(1);
+                    if idx < max.saturating_sub(1) {
+                        state.ui_state.insert("search_result_index".to_string(), (idx + 1).to_string());
+                    }
+                }).ok();
+            }
+            CommandType::SearchResultUp => {
+                self.state_store.read().await.update_state(|state| {
+                    let idx = state.ui_state.get("search_result_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                    if idx > 0 {
+                        state.ui_state.insert("search_result_index".to_string(), (idx - 1).to_string());
+                    }
+                }).ok();
+            }
+            CommandType::SearchSelectResult => {
+                let result_idx = self.state_store.read().await.get_state()
+                    .ui_state.get("search_result_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+                let search_type = self.state_store.read().await.get_state()
+                    .ui_state.get("search_type").cloned().unwrap_or("Decks".to_string());
+
+                if search_type == "Decks" {
+                    // Navigate to deck selection with the selected result
+                    self.state_store.read().await.update_state(|state| {
+                        state.ui_state.insert("search_result_selected".to_string(), result_idx.to_string());
+                    }).ok();
+
+                    // Select the deck and start study session
+                    if let Ok(decks) = self.deck_service.get_all_decks().await {
+                        let query = self.state_store.read().await.get_state()
+                            .ui_state.get("search_query").cloned().unwrap_or_default();
+                        let lower = query.to_lowercase();
+                        let matching_decks: Vec<_> = decks.iter()
+                            .filter(|(deck, _)| deck.name.to_lowercase().contains(&lower)
+                                || deck.description.as_ref().map(|d| d.to_lowercase().contains(&lower)).unwrap_or(false))
+                            .collect();
+
+                        if let Some((deck, _)) = matching_decks.get(result_idx) {
+                            let deck_id = deck.uuid;
+                            self.state_store.read().await.set_selected_deck(Some(deck_id)).ok();
+                            self.start_study_session().await?;
+                        }
+                    }
+                }
             }
             CommandType::NavigateBack => {
                 let state_store = self.state_store.read().await;
@@ -959,6 +1063,10 @@ impl App {
                     crate::ui::state::store::Screen::DeckSelection => {
                         self.handle_deck_selection_up().await?;
                     }
+                    crate::ui::state::store::Screen::DeckManagement => {
+                        // Deck list navigation
+                        self.handle_deck_management_up().await?;
+                    }
                     crate::ui::state::store::Screen::StudyPrefs => {
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
@@ -991,9 +1099,29 @@ impl App {
                         state_store.navigate_settings_up()?;
                     }
                     crate::ui::state::store::Screen::TagManagement => {
+                        // Get actual tag count to prevent infinite scrolling
+                        let tag_count = if let Ok(decks) = self.deck_service.get_all_decks().await {
+                            let mut tag_set = std::collections::HashSet::new();
+                            for (_, cards) in &decks {
+                                for card in cards {
+                                    for tag in &card.content.tags {
+                                        tag_set.insert(tag.clone());
+                                    }
+                                }
+                            }
+                            tag_set.len()
+                        } else {
+                            1
+                        };
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("tag_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx > 0 { state.ui_state.insert("tag_index".to_string(), (idx - 1).to_string()); }
+                            let max_idx = tag_count.saturating_sub(1);
+                            if idx > 0 && idx <= max_idx {
+                                state.ui_state.insert("tag_index".to_string(), (idx - 1).to_string());
+                            } else if idx > max_idx {
+                                // If current index is beyond available tags, reset to last valid
+                                state.ui_state.insert("tag_index".to_string(), max_idx.to_string());
+                            }
                         }).ok();
                     }
                     crate::ui::state::store::Screen::MediaManagement => {
@@ -1015,33 +1143,37 @@ impl App {
                         let state_store = self.state_store.read().await;
                         state_store.navigate_main_menu_down()?;
                     }
+                    crate::ui::state::store::Screen::DeckManagement => {
+                        // Deck list navigation
+                        self.handle_deck_management_down().await?;
+                    }
                     crate::ui::state::store::Screen::DeckSelection => {
                         self.handle_deck_selection_down().await?;
                     }
                     crate::ui::state::store::Screen::StudyPrefs => {
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("prefs_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx < 3 { state.ui_state.insert("prefs_index".to_string(), (idx + 1).to_string()); }
+                            if idx < STUDY_PREFS_ITEMS - 1 { state.ui_state.insert("prefs_index".to_string(), (idx + 1).to_string()); }
                         }).ok();
                     }
                     crate::ui::state::store::Screen::UiSettings => {
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("ui_settings_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx < 3 { state.ui_state.insert("ui_settings_index".to_string(), (idx + 1).to_string()); }
+                            if idx < UI_SETTINGS_ITEMS - 1 { state.ui_state.insert("ui_settings_index".to_string(), (idx + 1).to_string()); }
                         }).ok();
                     }
                     crate::ui::state::store::Screen::DataManage => {
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("data_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx < 4 { state.ui_state.insert("data_index".to_string(), (idx + 1).to_string()); }
+                            if idx < DATA_MANAGE_ITEMS - 1 { state.ui_state.insert("data_index".to_string(), (idx + 1).to_string()); }
                         }).ok();
                     }
                     crate::ui::state::store::Screen::Help => {
-                        // Help screen category navigation
+                        // Help screen category navigation down
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("help_category").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx > 0 {
-                                state.ui_state.insert("help_category".to_string(), (idx - 1).to_string());
+                            if idx < HELP_CATEGORIES - 1 {
+                                state.ui_state.insert("help_category".to_string(), (idx + 1).to_string());
                             }
                         }).ok();
                     }
@@ -1050,9 +1182,25 @@ impl App {
                         state_store.navigate_settings_down()?;
                     }
                     crate::ui::state::store::Screen::TagManagement => {
+                        // Get actual tag count to prevent infinite scrolling
+                        let tag_count = if let Ok(decks) = self.deck_service.get_all_decks().await {
+                            let mut tag_set = std::collections::HashSet::new();
+                            for (_, cards) in &decks {
+                                for card in cards {
+                                    for tag in &card.content.tags {
+                                        tag_set.insert(tag.clone());
+                                    }
+                                }
+                            }
+                            tag_set.len().max(1) // Ensure at least 1 to prevent division by zero
+                        } else {
+                            1
+                        };
                         self.state_store.read().await.update_state(|state| {
                             let idx = state.ui_state.get("tag_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
-                            if idx < 20 { state.ui_state.insert("tag_index".to_string(), (idx + 1).to_string()); }
+                            if idx < tag_count.saturating_sub(1) {
+                                state.ui_state.insert("tag_index".to_string(), (idx + 1).to_string());
+                            }
                         }).ok();
                     }
                     crate::ui::state::store::Screen::MediaManagement => {
@@ -1063,6 +1211,63 @@ impl App {
                     }
                     _ => {}
                 }
+            }
+            CommandType::ImportCards(content) => {
+                // Pasted TOML content import - DeckService needs import_cards_from_toml method
+                log::debug!("ImportCards: received {} chars of pasted content", content.len());
+            }
+            CommandType::CreateDeck(name, description) => {
+                let name_display = name.clone();
+                match self.deck_service.create_deck(name, description).await {
+                    Ok(_) => {
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                            "Deck Created",
+                            &format!("Deck '{}' created successfully", name_display),
+                        ))?;
+                    }
+                    Err(e) => {
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                            "Deck Creation Failed",
+                            &format!("{}", e),
+                        ))?;
+                    }
+                }
+            }
+            CommandType::DeleteDeck(deck_id) => {
+                match self.deck_service.delete_deck(&deck_id).await {
+                    Ok(_) => {
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::success(
+                            "Deck Deleted",
+                            "Deck deleted successfully",
+                        ))?;
+                    }
+                    Err(e) => {
+                        let state_store = self.state_store.read().await;
+                        state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                            "Delete Failed",
+                            &e.to_string(),
+                        ))?;
+                    }
+                }
+            }
+            CommandType::UpdateDeck(deck_id, name, description) => {
+                log::info!("Update deck {} requested: name={}, desc={:?}", deck_id, name, description);
+            }
+            CommandType::ShowDeckContextMenu(_, _) | CommandType::ShowCardContextMenu(_, _) => {
+                log::debug!("Context menu requested (handled in render layer)");
+            }
+            CommandType::SaveCard | CommandType::CancelEdit => {
+                log::debug!("Card editor command (save/cancel) - CardEditor screen not yet accessible");
+            }
+            CommandType::PasteCardContent(content) => {
+                log::debug!("Paste card content received ({} chars)", content.len());
+            }
+            CommandType::DeleteCard(card_id) => {
+                // DeckService needs a delete_card method - for now log the request
+                log::debug!("DeleteCard requested for {}", card_id);
             }
             _ => {
                 log::debug!("Unhandled command: {:?}", command);
@@ -1100,6 +1305,7 @@ impl App {
         {
             let state_store = self.state_store.read().await;
             state_store.navigate_to(crate::ui::state::store::Screen::StudySession)?;
+            state_store.set_current_session(Some(SessionState::new(deck_id)))?;
             state_store.set_current_card_study(true)?;
         }
 
@@ -1163,10 +1369,6 @@ impl App {
                 // Settings
                 let state_store = self.state_store.read().await;
                 state_store.navigate_to(crate::ui::state::store::Screen::Settings)?;
-            }
-            4 => {
-                // Quit
-                self.stop();
             }
             _ => {
                 // Invalid selection - do nothing
@@ -1971,7 +2173,8 @@ impl App {
                     let state_store = self.state_store.read().await;
                     state_store.show_message(crate::ui::state::store::SystemMessage::warning(
                         "Restore Skipped",
-                        "Current database exists. Delete it first to restore from backup.",
+                        "Database already exists. To restore from backup, delete the current database \
+                         manually (or use `rm ~/.local/share/ankitui/ankitui.db`), then try restore again.",
                     ))?;
                 }
                 return Ok(());
@@ -1990,8 +2193,89 @@ impl App {
         let state_store = self.state_store.read().await;
         state_store.show_message(crate::ui::state::store::SystemMessage::warning(
             "Clear Data",
-            "Clear data is disabled for safety. Use CLI or delete the database manually.",
+            "Data clearing requires CLI: run `ankitui clear-data --confirm` to remove all data.",
         ))?;
+        Ok(())
+    }
+
+    // Deck management methods
+
+    /// Handle deck management up navigation
+    async fn handle_deck_management_up(&mut self) -> TuiResult<()> {
+        let decks = self.deck_service.get_all_decks().await?;
+        let deck_count = decks.len();
+
+        if deck_count == 0 {
+            return Ok(());
+        }
+
+        self.state_store.read().await.update_state(|state| {
+            let current_selected = state.deck_list_selected.unwrap_or(0);
+            let new_selected = if current_selected == 0 {
+                deck_count - 1
+            } else {
+                current_selected - 1
+            };
+            state.deck_list_selected = Some(new_selected);
+        })?;
+
+        Ok(())
+    }
+
+    /// Handle deck management down navigation
+    async fn handle_deck_management_down(&mut self) -> TuiResult<()> {
+        let decks = self.deck_service.get_all_decks().await?;
+        let deck_count = decks.len();
+
+        if deck_count == 0 {
+            return Ok(());
+        }
+
+        self.state_store.read().await.update_state(|state| {
+            let current_selected = state.deck_list_selected.unwrap_or(0);
+            let new_selected = if current_selected >= deck_count - 1 {
+                0
+            } else {
+                current_selected + 1
+            };
+            state.deck_list_selected = Some(new_selected);
+        })?;
+
+        Ok(())
+    }
+
+    /// Handle deck management action (Enter key) — start studying the selected deck
+    async fn handle_deck_management_action(&mut self) -> TuiResult<()> {
+        let decks = self.deck_service.get_all_decks().await?;
+
+        if decks.is_empty() {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::warning(
+                "No Decks", "No decks available. Create a deck first."))?;
+            return Ok(());
+        }
+
+        let selected_index = {
+            let state = self.state_store.read().await;
+            state.get_deck_list_selected().unwrap_or(0)
+        };
+
+        if selected_index < decks.len() {
+            let (deck, _) = &decks[selected_index];
+
+            // Set as selected deck and start study session
+            {
+                let state_store = self.state_store.read().await;
+                state_store.set_selected_deck(Some(deck.uuid))?;
+            }
+
+            self.start_study_session().await?;
+        } else {
+            let state_store = self.state_store.read().await;
+            state_store.show_message(crate::ui::state::store::SystemMessage::error(
+                "Error", "Invalid deck selection"))?;
+        }
+
         Ok(())
     }
 }

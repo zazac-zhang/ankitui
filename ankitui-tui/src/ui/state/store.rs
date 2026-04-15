@@ -308,7 +308,8 @@ impl StateStore {
             if state.main_menu_selected > 0 {
                 state.main_menu_selected -= 1;
             } else {
-                state.main_menu_selected = 4; // Wrap to last item (Quit)
+                // Wrap to last item - use actual menu item count from render logic
+                state.main_menu_selected = 3; // MENU_ITEMS.len() - 1 from MenuScreen::MENU_ITEMS
             }
         })
     }
@@ -316,7 +317,8 @@ impl StateStore {
     /// Navigate main menu down
     pub fn navigate_main_menu_down(&self) -> TuiResult<()> {
         self.update_state(|state| {
-            if state.main_menu_selected < 4 {
+            if state.main_menu_selected < 3 {
+                // MENU_ITEMS.len() - 1 from MenuScreen::MENU_ITEMS
                 state.main_menu_selected += 1;
             } else {
                 state.main_menu_selected = 0; // Wrap to first item
@@ -357,10 +359,12 @@ impl StateStore {
         })
     }
 
-    /// Navigate settings menu down (6 items total)
+    /// Navigate settings menu down
     pub fn navigate_settings_down(&self) -> TuiResult<()> {
         self.update_state(|state| {
-            if state.settings_selected < 5 {
+            // Use actual settings items count from render_settings_with_real_data
+            // Total 8 settings items: Study, UI, Data, Tags, Media, Notifications, Keyboard, Language
+            if state.settings_selected < 7 {
                 state.settings_selected += 1;
             }
         })

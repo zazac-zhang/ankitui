@@ -1,0 +1,51 @@
+[deck]
+name = "English Vocabulary"
+description = "Common English words and phrases for learners"
+uuid = "a1b2c3d4-e5f6-7890-abcd-ef0123456004"
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456041"
+front = "ubiquitous"
+back = "adj. 无处不在的，普遍存在的\n来自拉丁语 ubique（到处）\n例句：Smartphones are ubiquitous in modern life."
+tags = ["词汇", "形容词"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456042"
+front = "pragmatic"
+back = "adj. 务实的，实用主义的\n例句：We need a pragmatic approach to solve this problem.\n近义词：practical, realistic"
+tags = ["词汇", "形容词"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456043"
+front = "dilemma"
+back = "n. 困境，两难境地\n例句：She faced the dilemma of choosing between career and family.\n搭配：face a dilemma, moral dilemma"
+tags = ["词汇", "名词"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456044"
+front = "mitigate"
+back = "v. 减轻，缓和\n例句：Measures should be taken to mitigate the effects of climate change.\n搭配：mitigate risks, mitigate damage"
+tags = ["词汇", "动词"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456045"
+front = "paradigm"
+back = "n. 范式，典范\n例句：The internet has created a new paradigm for communication.\n搭配：paradigm shift（范式转变）"
+tags = ["词汇", "名词"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"

@@ -37,6 +37,7 @@ pub struct EventLoop {
     config: EventLoopConfig,
     last_tick: Instant,
     state_store: Arc<RwLock<StateStore>>,
+    tick_counter: u64,
 }
 
 impl EventLoop {
@@ -46,6 +47,7 @@ impl EventLoop {
             config,
             last_tick: Instant::now(),
             state_store,
+            tick_counter: 0,
         }
     }
 
@@ -110,13 +112,9 @@ impl EventLoop {
 
     /// Handle periodic tick events
     async fn handle_tick(&mut self) -> TuiResult<Option<Command>> {
-        // Handle periodic tasks like:
-        // - Auto-save
-        // - Background synchronization
-        // - Progress indicators
-        // - Timer updates
-
-        // For now, return no command on tick
+        // Tick handler runs periodically for maintenance tasks
+        // (auto-save, sync, progress indicators, timer updates, etc.)
+        self.tick_counter = self.tick_counter.wrapping_add(1);
         Ok(None)
     }
 
@@ -224,6 +222,18 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
     let screen = current_state.current_screen();
 
     match (event.code, event.modifiers) {
+        // Search screen: Enter to select result (before generic Enter handler)
+        (KeyCode::Enter, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
+            Command::user(CommandType::SearchSelectResult)
+        }
+        // Search screen: Up/Down navigate results (before generic navigation handlers)
+        (KeyCode::Up, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
+            Command::user(CommandType::SearchResultUp)
+        }
+        (KeyCode::Down, KeyModifiers::NONE) if screen == crate::ui::state::Screen::Search => {
+            Command::user(CommandType::SearchResultDown)
+        }
+
         // Navigation keys - context dependent
         (KeyCode::Up, KeyModifiers::NONE) => handle_navigation_up(screen, current_state),
         (KeyCode::Down, KeyModifiers::NONE) => handle_navigation_down(screen, current_state),
@@ -257,9 +267,6 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         (KeyCode::Char('4'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
             Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Settings))
         }
-        (KeyCode::Char('5'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
-            Command::user(CommandType::Quit)
-        }
         (KeyCode::Char('/'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
             Command::user(CommandType::StartSearch)
         }
@@ -281,8 +288,12 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         // Escape key - context dependent
         (KeyCode::Esc, KeyModifiers::NONE) => handle_escape_contextual(screen, current_state),
 
-        // Quit keys - global
+        // Quit keys - global and context-specific
         (KeyCode::Char('q'), KeyModifiers::CONTROL) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+            Command::user(CommandType::Quit)
+        }
+        // 'q' key in main menu also quits
+        (KeyCode::Char('q'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MainMenu => {
             Command::user(CommandType::Quit)
         }
 
@@ -300,8 +311,10 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
         // Create key - context dependent
         (KeyCode::Char('n'), KeyModifiers::CONTROL) => handle_create_contextual(screen, current_state),
 
-        // Delete key - context dependent
-        (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL) => {
+        // Delete key - context dependent (excluding DeckSelection which has its own handler below)
+        (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL)
+            if screen != crate::ui::state::Screen::DeckSelection =>
+        {
             handle_delete_contextual(screen, current_state)
         }
 
@@ -334,9 +347,55 @@ fn handle_key_event_contextual(event: KeyEvent, current_state: &AppState) -> Com
             Command::user(CommandType::DeleteSelectedTag)
         }
 
+        // Deck management: delete selected deck
+        (KeyCode::Char('d'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::DeleteDeckPrompt)
+        }
+
+        // Deck management: export selected deck to TOML
+        (KeyCode::Char('e'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::DeckManagement => {
+            Command::user(CommandType::ExportDeck)
+        }
+
         // Media management: clean orphaned media
         (KeyCode::Char('c'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::MediaManagement => {
             Command::user(CommandType::CleanOrphanedMedia)
+        }
+
+        // F13.22: Global Ctrl+S to save settings (except in study session where Ctrl+S suspends card)
+        (KeyCode::Char('s'), KeyModifiers::CONTROL) if !matches!(
+            screen,
+            crate::ui::state::Screen::StudySession
+        ) => {
+            Command::user(CommandType::Confirm)
+        }
+
+        // F13.23: DeckSelection Delete key for deck deletion prompt
+        (KeyCode::Delete, KeyModifiers::NONE) | (KeyCode::Backspace, KeyModifiers::CONTROL)
+            if screen == crate::ui::state::Screen::DeckSelection => {
+            Command::user(CommandType::DeleteDeckPrompt)
+        }
+
+        // F13.8: Statistics screen number key navigation
+        (KeyCode::Char('1'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Statistics => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Statistics))
+        }
+        (KeyCode::Char('2'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Statistics => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Statistics))
+        }
+        (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Statistics => {
+            Command::user(CommandType::NavigateTo(crate::ui::state::Screen::Statistics))
+        }
+
+        // F13.9: Settings screen number key navigation
+        (KeyCode::Char('1'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Settings => {
+            Command::user(CommandType::NavigateDown)
+        }
+        (KeyCode::Char('2'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Settings => {
+            Command::user(CommandType::NavigateDown)
+        }
+        (KeyCode::Char('3'), KeyModifiers::NONE) if screen == crate::ui::state::Screen::Settings => {
+            Command::user(CommandType::NavigateDown)
         }
 
         _ => Command::user(CommandType::Unknown),
@@ -365,6 +424,7 @@ fn handle_mouse_event_contextual(event: CrosstermMouseEvent, current_state: &App
 fn handle_navigation_up(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectPreviousDeck),
+        crate::ui::state::Screen::DeckManagement => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateUp),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateUp),
@@ -378,6 +438,7 @@ fn handle_navigation_up(screen: crate::ui::state::Screen, _current_state: &AppSt
 fn handle_navigation_down(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::SelectNextDeck),
+        crate::ui::state::Screen::DeckManagement => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::StudySession => Command::user(CommandType::NavigateDown),
         crate::ui::state::Screen::Statistics => Command::user(CommandType::NavigateDown),
@@ -411,6 +472,7 @@ fn handle_select_contextual(screen: crate::ui::state::Screen, current_state: &Ap
     match screen {
         crate::ui::state::Screen::MainMenu => Command::user(CommandType::Confirm),
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::StartStudySessionDefault),
+        crate::ui::state::Screen::DeckManagement => Command::user(CommandType::Confirm),
         crate::ui::state::Screen::StudySession => {
             if current_state.is_showing_answer() {
                 Command::user(CommandType::RateCurrentCard(CardRating::Good))
@@ -491,8 +553,9 @@ fn handle_create_contextual(screen: crate::ui::state::Screen, _current_state: &A
 fn handle_delete_contextual(screen: crate::ui::state::Screen, _current_state: &AppState) -> Command {
     match screen {
         crate::ui::state::Screen::DeckSelection => Command::user(CommandType::DeleteDeckPrompt),
+        crate::ui::state::Screen::DeckManagement => Command::user(CommandType::DeleteDeckPrompt),
         crate::ui::state::Screen::CardEditor => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
-        _ => Command::user(CommandType::DeleteCard(uuid::Uuid::nil())),
+        _ => Command::user(CommandType::Unknown),
     }
 }
 

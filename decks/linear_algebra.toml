@@ -1,0 +1,96 @@
+[deck]
+name = "Linear Algebra"
+description = "Basic linear algebra concepts and examples"
+uuid = "a1b2c3d4-e5f6-7890-abcd-ef0123456001"
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456011"
+front = "什么是矩阵？"
+back = "矩阵（Matrix）是一个按照长方阵列排列的复数或实数集合，通常用于表示线性变换或方程组。例如：\n[1 2]\n[3 4]"
+tags = ["基础", "矩阵"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456012"
+front = "什么是行列式（Determinant）？"
+back = "行列式是一个可以从方阵计算出的标量值，记作 det(A) 或 |A|。它反映了线性变换对面积的缩放因子。\n对于 2×2 矩阵 [a b; c d]，行列式为 ad - bc。"
+tags = ["基础", "行列式"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456013"
+front = "矩阵乘法如何计算？"
+back = "两个矩阵 A (m×n) 和 B (n×p) 相乘，结果 C = AB 是 m×p 矩阵。\nC 的第 i 行第 j 列元素 = A 的第 i 行与 B 的第 j 列的点积。\n注意：矩阵乘法不满足交换律，即 AB ≠ BA（一般情况下）。"
+tags = ["矩阵运算", "乘法"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456014"
+front = "什么是特征值和特征向量？"
+back = "对于方阵 A，如果存在非零向量 v 和标量 λ 使得 Av = λv，则 λ 称为 A 的特征值，v 称为对应的特征向量。\n特征值反映了线性变换在某些方向上的缩放因子。"
+tags = ["特征值", "特征向量"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456015"
+front = "什么是逆矩阵？"
+back = "对于 n×n 方阵 A，如果存在矩阵 B 使得 AB = BA = I（单位矩阵），则 B 称为 A 的逆矩阵，记作 A⁻¹。\n逆矩阵存在的充要条件是 det(A) ≠ 0。\n2×2 矩阵 [a b; c d] 的逆矩阵为 (1/(ad-bc)) × [d -b; -c a]。"
+tags = ["矩阵运算", "逆矩阵"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456016"
+front = "什么是线性相关和线性无关？"
+back = "一组向量 {v₁, v₂, ..., vₙ} 如果存在不全为零的系数 c₁, c₂, ..., cₙ 使得 c₁v₁ + c₂v₂ + ... + cₙvₙ = 0，则称它们线性相关。\n否则称为线性无关。线性无关的向量组构成了向量空间的基。"
+tags = ["线性相关", "线性无关", "基"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456017"
+front = "什么是秩（Rank）？"
+back = "矩阵的秩是矩阵中线性无关的行（或列）的最大数量，记作 rank(A)。\n秩等于行空间的维数，也等于列空间的维数。\n满秩矩阵：rank(A) = min(m, n)。"
+tags = ["秩", "线性无关"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456018"
+front = "解线性方程组 Ax = b 的方法？"
+back = "常用方法：\n1. 高斯消元法（Gaussian Elimination）：通过行变换将增广矩阵化为行阶梯形\n2. 克拉默法则（Cramer's Rule）：xᵢ = det(Aᵢ)/det(A)\n3. 矩阵求逆法：x = A⁻¹b（当 A 可逆时）\n4. LU 分解法"
+tags = ["方程组", "高斯消元"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456019"
+front = "什么是正交矩阵？"
+back = "如果一个 n×n 实矩阵 Q 满足 QᵀQ = QQᵀ = I，则 Q 是正交矩阵。\n正交矩阵的性质：\n- Q⁻¹ = Qᵀ\n- 列（行）向量组是标准正交基\n- 保持向量的长度和夹角不变\n- det(Q) = ±1"
+tags = ["正交矩阵", "正交"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"
+
+[[cards]]
+id = "a1b2c3d4-e5f6-7890-abcd-ef0123456020"
+front = "什么是向量空间的基（Basis）？"
+back = "向量空间 V 的一组基是 V 中线性无关且能生成整个 V 的向量集合。\n基中向量的个数称为向量空间的维数（dimension）。\n例如：R² 的标准基是 e₁ = (1,0) 和 e₂ = (0,1)。"
+tags = ["基", "维数", "向量空间"]
+custom = {}
+created_at = "2025-01-01T00:00:00Z"
+modified_at = "2025-01-01T00:00:00Z"

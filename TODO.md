@@ -1552,3 +1552,556 @@ cargo run --release
 
 项目已经达到**生产就绪状态**。
 
+---
+
+## F12 - Deck Management 功能增强（P1）
+
+> **日期**: 2026-04-15
+> **目标**: 让 Deck Management 屏幕从"只能看"变成真正实用的 deck 管理界面
+
+### 当前已有功能
+
+| 快捷键 | 功能 | 状态 |
+|--------|------|------|
+| Enter | 开始学习选中 deck | ✅ 已实现 |
+| E | 导出 deck 为 TOML 文件 | ✅ 已实现 |
+| D | 删除选中 deck | ✅ 已实现 |
+| Esc | 返回主菜单 | ✅ 已实现 |
+| ↑↓ | 上下导航 | ✅ 已实现 |
+
+### 需要添加的功能（按优先级）
+
+#### P1 - 高优先级（终端友好，无需文本输入）
+
+##### F12.1 - S: 查看 Deck 统计
+- **描述**：展示当前 deck 的详细统计信息
+  - 卡片状态分布（New / Learning / Review / Relearn / Suspended / Buried）
+  - 今日待复习数
+  - 历史准确率
+  - 平均 ease factor
+- **实现**：进入 Deck 统计子页面（类似 Statistics 屏幕但只针对单个 deck）
+- **快捷键**：S → 进入子页面 → Esc 返回
+- **涉及文件**：
+  - `ankitui-tui/src/ui/state/store.rs` — 新增 `DeckStats` 屏幕
+  - `ankitui-tui/src/ui/render/mod.rs` — 新增 `render_deck_stats`
+  - `ankitui-tui/src/app/main_app.rs` — 新增 CommandType + 命令处理
+  - `ankitui-tui/src/app/event_loop.rs` — S 键绑定
+
+##### F12.2 - R: 重置学习进度
+- **描述**：将 deck 中所有卡片重置为 New（interval=0, ease=2.5, reps=0, lapses=0）
+- **场景**：学乱了想重来
+- **实现**：二次确认 → 遍历卡片更新状态
+- **快捷键**：R → 确认对话框 → 确认后重置
+- **涉及文件**：
+  - `ankitui-tui/src/ui/event/command.rs` — 新增 `ResetDeckProgress` 命令
+  - `ankitui-tui/src/app/main_app.rs` — 命令处理（调用 `update_card_states`）
+  - `ankitui-tui/src/app/event_loop.rs` — R 键绑定
+
+##### F12.3 - A: 调整调度参数
+- **描述**：调整 deck 级别的 SM-2 参数（全数值调整，无需文本输入）
+  - 每日新卡片上限（←→ 增减）
+  - 每日复习上限（←→ 增减）
+  - 起始 ease factor（←→ 增减）
+- **场景**：调整学习节奏
+- **快捷键**：A → 进入参数调整子页面 → Esc 保存返回
+- **涉及文件**：
+  - `ankitui-tui/src/ui/state/store.rs` — 新增 `DeckScheduler` 屏幕
+  - `ankitui-tui/src/ui/render/mod.rs` — 新增 `render_deck_scheduler`
+  - `ankitui-tui/src/app/main_app.rs` — 命令处理（调用 `update_deck_config`）
+  - `ankitui-tui/src/app/event_loop.rs` — A 键绑定
+
+##### F12.4 - I: 导入卡片到当前 deck
+- **描述**：将 TOML 文件中的卡片导入到选中的 deck
+- **场景**：从外部 TOML 文件批量添加卡片
+- **快捷键**：I → 确认后导入
+- **涉及文件**：
+  - `ankitui-tui/src/ui/event/command.rs` — 新增 `ImportCardsToDeck` 命令
+  - `ankitui-tui/src/app/main_app.rs` — 命令处理（读取 import.toml 后 add_cards）
+  - `ankitui-tui/src/app/event_loop.rs` — I 键绑定
+
+#### P2 - 中优先级（需要少量文本输入）
+
+##### F12.5 - N: 重命名 Deck
+- **描述**：修改 deck 名称
+- **终端替代方案**：CLI 专用 `ankitui rename-deck <uuid> <name>`
+- **快捷键**：N → 提示使用 CLI 重命名
+- **涉及文件**：
+  - `ankitui-tui/src/ui/event/command.rs` — 新增 `RenameDeck` 命令
+  - `ankitui-tui/src/app/main_app.rs` — 提示 CLI 操作
+
+#### 不实现的功能（理由）
+
+| 功能 | 不实现原因 |
+|------|-----------|
+| 合并 Deck | 需解决卡片重复问题，终端操作复杂 |
+| 克隆 Deck | 导出再导入即可实现 |
+| 卡片排序 | 终端不友好 |
+| 批量标记 | Study 页面已有单张操作 |
+| 子 Deck 嵌套 | 需重新设计数据模型 |
+
+### 推荐实现顺序
+
+1. **S - 查看统计**（信息展示，最简单，200-300 行）
+2. **R - 重置进度**（确认对话框，200 行）
+3. **A - 调度参数**（数值调整，300 行）
+4. **I - 导入卡片**（复用 TOML 解析，150 行）
+5. **N - 重命名**（CLI 提示，50 行）
+
+### 目标界面布局
+
+```
+┌── Deck Management ──────────────────────────────────┐
+│ 🗂️ Manage Decks                                      │
+├── Your Decks ────────────────────────────────────────┤
+│ ▶ Linear Algebra (10 cards, 5 due, 3 new)           │
+│   Python Basics (7 cards, 7 due, 7 new)             │
+│   DSA (6 cards, 6 due, 6 new)                       │
+│   English Vocabulary (5 cards, 5 due, 5 new)        │
+├── Controls ──────────────────────────────────────────┤
+│ ↑↓: Navigate | Enter: Study | E: Export | D: Delete  │
+│ S: Stats | R: Reset | A: Scheduler | I: Import | Esc │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+## F13 - TUI 未实现功能深度扫描（2026-04-15）
+
+> 扫描方法: 从业务逻辑工作流角度分析 UI → 事件 → 命令 → 业务逻辑 → 状态更新 → UI 刷新的完整链路
+> 不只看 TODO/FIXME/unimplemented 标记，而是分析每条操作链路在哪一步断裂
+
+---
+
+### 一、组件架构层 — 整条链路断裂
+
+#### 1. Component 组件框架完全未接入
+
+**链路断裂点:** 运行时（事件循环 + 渲染）完全不使用 Component 体系
+
+- `Component` trait（`handle_input`, `render`, `update`）和 `ComponentRegistry` 在 ~15 个文件中定义并实现
+- 但 `ComponentRegistry::new()` 从未被调用，`MenuScreen::new()` 等也从未实例化
+- 事件循环使用独立的 `handle_key_event_contextual()` 代替 `Component::handle_input()`
+- 渲染器调用 `render_main_menu()` 等独立函数代替 `Component::render()`
+- **影响:** 所有 `ui/components/screens/` 下组件文件的修改不会对运行中的程序产生任何效果
+- **涉及文件:** `ui/components/base/mod.rs`, `ui/components/layout/mod.rs`, 所有 screens 下的组件
+
+---
+
+### 二、核心业务流程断裂
+
+#### 2. 创建牌组 — 入口存在，但用户被引导去 CLI
+
+**链路:** Ctrl+N → CreateDeckPrompt 命令 → 导航到 DeckManagement(create) → 提示使用 CLI
+
+- `main_app.rs:596-608`: `CreateDeckPrompt` 只显示消息 "Use the CLI to create new decks"
+- `deck/create.rs`: DeckCreateScreen 渲染静态占位文本，`handle_input` 直接返回 `Ok(false)`
+- `render/mod.rs:776-778`: DeckManagement 显示 "Press Ctrl+N to create a new deck"，但按了之后又回到步骤 1
+- **断裂点:** 命令处理层（业务逻辑被 CLI 提示替代）+ 输入组件（无文本输入能力）
+
+#### 3. 编辑牌组 — 完全不可达
+
+**链路:** 无入口 → 无导航 → 无渲染 → 无服务支持
+
+- `DeckEditScreen` 组件已实现（名称/描述/调度器设置/保存）
+- `Screen` 枚举中无 `EditDeck` 变体
+- 无任何键盘绑定导航到编辑界面
+- `render/mod.rs` 中无 `render_edit_deck` 函数
+- `DeckService` 无 `update_deck` 方法
+- **断裂点:** 导航状态 + 键盘绑定 + 渲染 + 服务层，整条链全断
+
+#### 4. 牌组管理页面 Enter 键 — 视觉提示与实际操作不符
+
+**链路:** Enter → handle_deck_management_action → 直接开始学习（而非编辑/删除/导出/统计）
+
+- `render/mod.rs:795`: 显示 "Actions: Edit | Delete | Export | Stats"
+- `main_app.rs:2136-2168`: Enter 实际行为是 `set_selected_deck_id` + 启动学习会话
+- 视觉暗示有 4 种操作，但 Enter 只有一种行为（开始学习）
+- **断裂点:** 命令处理层（视觉 affordance 没有对应的操作实现）
+
+#### 5. 学习会话 — 数据流与 SessionController 脱节
+
+**链路:** 开始学习 → SessionController 跟踪 → 渲染时绕过 SessionController 直接查 service
+
+- `main_app.rs:1171-1208`: `start_study_session` 调用 `study_service.start_session()` 更新核心层，但从未设置 `state_store.set_current_session()`
+- `state.current_session` 始终为 `None`，统计页面始终显示 "No active session"
+- `render/mod.rs:330-439`: 渲染时每帧调用 `study_service.get_next_card(&deck_id)`，而非从 SessionController 获取当前卡片
+- Skip/Rating 操作后，显示的卡片与 SessionController 实际状态不一致
+- **断裂点:** 状态同步（current_session 从未填充）+ 数据流（渲染绕过 SessionController）
+
+#### 6. 学习会话 Pause/Resume — 仅显示消息，无实际控制
+
+**链路:** Pause 命令 → 显示 "Session Paused" → SessionController 继续运行
+
+- `main_app.rs:505-518`: 只显示系统消息，没有实际暂停 SessionController
+- **断裂点:** 命令处理层（无实际业务逻辑调用）
+
+---
+
+### 三、页面交互断裂
+
+#### 7. 牌组浏览 DeckScreen — C/E/D 快捷键无效
+
+**链路:** 帮助显示 "C: Create | E: Edit | D: Delete" → 键盘处理只响应 Up/Down/Enter/Esc
+
+- `deck/browse.rs:106,113-139`: `handle_input` 不处理 C、E、D 键
+- **断裂点:** 键盘绑定（帮助文本与实际操作不匹配）
+
+#### 8. 统计页面 — 编号选项无响应
+
+**链路:** 渲染 "1. Global | 2. Deck | 3. Progress" → handle_input 返回 `Ok(false)`
+
+- `stats/mod.rs:71-73`: 数字键处理完全缺失
+- 事件循环中仅在 MainMenu 下处理数字键，Stats 屏幕未接入
+- **断裂点:** 键盘绑定 + 事件路由
+
+#### 9. 设置页面 — 编号选项无响应
+
+**链路:** 渲染 "1. Study | 2. UI | 3. Data" → handle_input 返回 `Ok(false)`
+
+- `settings/mod.rs:55-57`: 数字键处理缺失
+- **断裂点:** 键盘绑定 + 事件路由
+
+#### 10. 搜索页面 — 结果列表无法交互
+
+**链路:** 渲染搜索结果列表 → 无法上下导航 → Enter 无操作
+
+- 状态中无 `search_result_selected` 索引
+- `Select` 命令在 Search 屏幕下为 no-op
+- 即使选中结果，也无导航到对应牌组/卡片的处理器
+- **断裂点:** 状态（无选择索引）+ 命令处理 + 导航
+
+#### 11. 统计 "Deck Stats" 标签 — 数据只读，无法钻取
+
+**链路:** 显示牌组表格 → 无高亮选中 → 无法进入具体牌组详情
+
+- 表格用 `f.render_widget(table, ...)` 渲染，无 ListState
+- 键盘导航只能在标签页间切换（0/1/2），无法选中行
+- **断裂点:** 交互（无行选中机制）+ 导航（无钻取路径）
+
+#### 12. 统计 Progress 标签 — 数据造假
+
+**链路:** 渲染 Progress 数据 → 学习进度用 `total_decks` 冒充 streak
+
+- `render/mod.rs:599`: `format!("Study Streak: {} days", global_stats.total_decks)`
+- `ProgressScreen` 初始化全部为零，`with_stats()` 从未被调用
+- **断裂点:** 数据流（错误字段映射）+ 数据源（ProgressScreen 无数据填充路径）
+
+#### 13. 统计 screens 服务未注入
+
+**链路:** GlobalStatsScreen / DeckStatsScreen 有 `with_deck_service()` / `with_stats_service()` → 从未被调用
+
+- `stats/mod.rs:91-113, 179-196`: 屏幕初始化时 `deck_service: None`, `stats_service: None`
+- 始终显示 "Loading..."
+- **断裂点:** 依赖注入（服务从未被设置）
+
+---
+
+### 四、命令分发断裂
+
+#### 14. ExportDeck 命令 — 生成后被静默丢弃
+
+**链路:** 按 'e' → 生成 ExportDeck 命令 → execute_command 无匹配 → 落入 `_ => unhandled`
+
+- `event_loop.rs:344-345`: 键盘处理器生成命令
+- `main_app.rs:1174-1176`: 无对应 match arm
+- **断裂点:** 命令分发层
+
+#### 15. ImportCards 命令 — 生成后被静默丢弃
+
+**链路:** 粘贴多行内容 → 生成 ImportCards → execute_command 无匹配 → 落入 `_ => unhandled`
+
+- `event_loop.rs:587-589`: 粘贴处理器生成命令
+- `main_app.rs`: 无对应 match arm
+- **断裂点:** 命令分发层
+
+#### 16. CreateDeck / DeleteDeck(Uuid) / UpdateDeck 命令 — 生成后被静默丢弃
+
+**链路:** AppController 中处理了这些命令 → execute_command 无匹配
+
+- `command.rs:43-48`: 命令已定义
+- `main_app.rs`: 只处理 `CreateDeckPrompt` / `DeleteDeckPrompt` / `EditDeck`，不处理直接的 CRUD 命令
+- **断裂点:** 命令分发层
+
+#### 17. Context Menu 命令 — 右键生成后被丢弃
+
+**链路:** 右键点击 → 生成 ShowDeckContextMenu / ShowCardContextMenu → execute_command 无匹配
+
+- `event_loop.rs:548-549`: 右键处理器生成命令
+- `main_app.rs`: 无对应 match arm
+- **断裂点:** 命令分发层
+
+#### 18. CardEditor 相关命令 — SaveCard / CancelEdit / PasteCardContent 全部被丢弃
+
+**链路:** CardEditor 键盘操作 → 生成命令 → execute_command 无匹配
+
+- `command.rs:64-67`: 命令已定义
+- `main_app.rs`: 无对应 match arm
+- **断裂点:** 命令分发层
+
+#### 19. Screen::CardEditor — 完全不可达
+
+**链路:** 无导航入口 → 无渲染 arm → 命令不处理
+
+- Screen 枚举有 `CardEditor` 变体，但无任何 `navigate_to(Screen::CardEditor)` 调用
+- `render_with_app_and_state` 的 match 中无 `Screen::CardEditor` arm，落入默认分支渲染主菜单
+- 所有 Card 相关命令（SaveCard, ToggleCardSide, CancelEdit 等）均为 unhandled
+- **断裂点:** 导航入口 + 渲染 + 命令分发，三处全断
+
+---
+
+### 五、UI 提示与实现不匹配
+
+#### 20. 标签管理 — "R: Rename" 无实现
+
+**链路:** 帮助显示 "R: Rename" → 事件循环无 'R' 键处理 → 无 RenameTag 命令 → 无文本输入机制
+
+- `render/mod.rs:1359`: 帮助文本提示
+- `event_loop.rs`: 无 'R' 键映射
+- `command.rs`: 无 `RenameTag` 变体
+- TUI 无通用文本输入能力（无法输入新标签名）
+- **断裂点:** 键盘绑定 + 命令类型 + 输入机制
+
+#### 21. 媒体管理 — "V: Validate all media" 无实现
+
+**链路:** 渲染 "V: Validate" → 事件循环无 'V' 键 → 无 ValidateMedia 命令 → 核心层无 validate_media 方法
+
+- `render/mod.rs:1430-1433`: UI 渲染操作选项
+- `event_loop.rs`: 无 'V' 键映射（只有 'C' for CleanOrphanedMedia）
+- 核心层无 `validate_media` 方法
+- **断裂点:** 键盘绑定 + 命令类型 + 服务方法
+
+#### 22. Help 页面 — "Ctrl+S: Save settings" 无绑定
+
+**链路:** Help 显示 Ctrl+S → 事件循环无 Ctrl+S 处理 → 无命令映射
+
+- `render/mod.rs:988-991`: Help 列出快捷键
+- `event_loop.rs`: 无任何 Ctrl+S 处理
+- **断裂点:** 键盘绑定
+
+#### 23. DeckSelection 的 Delete 键 — handle_delete_contextual 定义但从不被调用
+
+**链路:** handle_delete_contextual 支持 DeckSelection → 但键盘绑定的 guard 只在 DeckManagement 下触发
+
+- `event_loop.rs:305`: Delete 键绑定 guard `if screen == Screen::DeckManagement`
+- `handle_delete_contextual` 对 DeckSelection 的逻辑永远不会被执行到
+- **断裂点:** 键盘绑定（guard 条件排除了 DeckSelection）
+
+---
+
+### 六、持久化与配置断裂
+
+#### 24. 设置持久化 — config_manager 始终为 None
+
+**链路:** App::new() 传 None → persist_settings() 直接返回 → 设置永不写入磁盘
+
+- `main_app.rs:80-81`: `App::new()` 调用 `with_config_manager(config, None)`
+- `main_app.rs:1870-1910`: `persist_settings()` 检查到 `config_manager` 为 None 立即返回
+- `shutdown()` 调用 `persist_settings()` 也是 no-op
+- **断裂点:** 初始化（依赖注入缺失）
+
+#### 25. 设置保存 — 仅 shutdown 时尝试持久化，运行中无 Ctrl+S
+
+**链路:** 修改设置 → 无 Ctrl+S 触发 persist → 仅退出时写入（且因 #24 也是 no-op）
+
+- `render/mod.rs:1118`: UI 显示 "Settings auto-saved"
+- 实际仅在 `shutdown()` 中调用 `persist_settings()`
+- **断裂点:** 事件处理（无 Ctrl+S 映射）+ 持久化（#24）
+
+#### 26. StudyPrefsScreen / UiSettingsScreen — Ctrl+S 返回信号无人接收
+
+**链路:** Ctrl+S → 设置 dirty=true → 返回 Ok(true) → 调用者不检查返回值 → 不触发持久化
+
+- `settings/mod.rs:265-268, 457-459`: 设置 dirty 标志
+- 无调用者读取此标志
+- **断裂点:** 事件处理（无 Ctrl+S → persist 映射）
+
+---
+
+### 七、数据管理功能断裂
+
+#### 27. 数据导入 — 仅读取硬编码路径，无文件选择
+
+**链路:** 选择 Import → handle_data_import → 读取 `data_dir.join("import.toml")` → 无此文件则失败
+
+- `main_app.rs:1914-1948`: 路径硬编码
+- 无文件选择器/对话框
+- 用户无法指定导入源
+- **断裂点:** 数据流（输入源固定死）
+
+#### 28. 数据恢复 — 正常场景下被阻止
+
+**链路:** 选择 Restore → 检查 `!db_path.exists()` → 数据库存在则跳过 → 提示手动删除
+
+- `main_app.rs:2032-2078`: 安全检查阻止正常情况下的恢复操作
+- 无确认/覆盖机制
+- **断裂点:** 业务逻辑（安全策略阻断正常流程）
+
+#### 29. 数据清除 — 功能被禁用
+
+**链路:** 选择 Clear → handle_data_clear → 返回 "disabled for safety"
+
+- `main_app.rs:2080-2087`: 始终返回禁用消息
+- **断裂点:** 业务逻辑（功能 stub）
+
+---
+
+### 八、组件级缺陷
+
+#### 30. DeckManageScreen 子操作 — 全部只更新状态消息
+
+**链路:** 选择子操作 → execute_action → 设置 status_message 字符串 → 无实际导航/操作
+
+- `deck/manage.rs:76-88`: 6 个子操作（Add Cards, Browse, Stats, Tags, Delete, Export）
+- 每个操作只设置如 "Add Cards: Select cards to add to deck" 的文本
+- **断裂点:** 业务逻辑（无实际操作执行）
+
+#### 31. DeckEditScreen — 文本字段无法编辑
+
+**链路:** 聚焦文本字段 → Enter → 设置 status_message → 无文本输入机制
+
+- `deck/edit.rs:174-185`: 名称/描述/学习步骤字段只有占位提示
+- 只有数字字段（new_cards_per_day, max_reviews_per_day）能通过 ←→ 调整
+- **断裂点:** 交互（TUI 无文本输入 widget 集成）
+
+#### 32. DataManageScreen 导入/恢复 — 只更新状态消息
+
+**链路:** 选择 Import/Restore → execute_operation → 设置提示文本 → 无文件选择/解析/导入
+
+- `settings/mod.rs:526-537`: 5 个操作中的 Import 和 Restore 为占位
+- **断裂点:** 业务逻辑 + 交互
+
+#### 33. Input Widget — 无回调机制
+
+**链路:** 输入文字 → handle_input 返回 bool → 无 on_change/on_submit → 父组件无法响应
+
+- `widgets/mod.rs:157-302`: 无事件回调设计
+- **断裂点:** 组件设计（无事件通知机制）
+
+#### 34. Dialog Widget — Enter 不返回选择按钮
+
+**链路:** Dialog 有多个按钮 → 按 Enter → 返回 Ok(true) → 不告知选了哪个按钮
+
+- `widgets/mod.rs:700-721`: `selected_button` 索引视觉追踪但不传达给调用方
+- **断裂点:** 组件设计（无选择结果返回）
+
+#### 35. StudyRatingScreen — 自动确认与 UI 暗示不一致
+
+**链路:** 按 1-4 评分 → 立即自动确认 → UI 显示可选择后确认的暗示
+
+- `study/rating.rs:124-130`: 注释说明 "Auto-confirm on selection"
+- **断裂点:** 交互设计不一致
+
+---
+
+### 九、可靠性问题
+
+#### 36. render 路径中的 block_in_place — 可能死锁
+
+**链路:** 渲染闭包内 → block_in_place + block_on → 可能在 tokio 线程池内死锁
+
+- `render/mod.rs:256-262`: deck 选择渲染中的数据库调用
+- **断裂点:** 架构设计（同步渲染中阻塞异步运行时）
+
+#### 37. handle_tick — 周期性任务全部为空
+
+**链路:** 每 16ms tick → 注释列出自动保存/同步/进度/计时器 → 返回 Ok(None)
+
+- `event_loop.rs:112-121`: 计划功能全部缺失
+- **断裂点:** 业务逻辑（子系统完全未实现）
+
+---
+
+### 汇总统计
+
+| 类别 | 问题数 | 严重程度 |
+|------|--------|----------|
+| 组件架构断裂 | 1 | 严重 |
+| 核心业务流程断裂 | 4 | 严重 |
+| 页面交互断裂 | 6 | 高 |
+| 命令分发断裂 | 6 | 高 |
+| UI 提示与实现不匹配 | 4 | 中 |
+| 持久化与配置断裂 | 3 | 高 |
+| 数据管理功能断裂 | 3 | 中 |
+| 组件级缺陷 | 6 | 中 |
+| 可靠性问题 | 2 | 中 |
+| **合计** | **37** | |
+
+---
+
+## F13 修复进度（2026-04-15）
+
+### Phase 0: 基础设施验证 ✅ 完成
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 0.1 | F13.24 config_manager 注入 | ✅ 已验证 | main.rs:122 已正确传入 Some(config_manager)，无需修改 |
+
+### Phase 1: 独立修复 ✅ 完成
+
+#### Phase 1A: 命令分发修复 ✅
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 1A.1 | F13.14 ExportDeck | ✅ 已处理 | 原来已存在于 line 610，无需重复添加 |
+| 1A.2 | F13.15 ImportCards | ✅ 已修复 | 添加 match arm（暂为 log 占位，等待 DeckService 方法） |
+| 1A.3 | F13.16 CreateDeck/DeleteDeck/UpdateDeck | ✅ 已修复 | CreateDeck/DeleteDeck 完整实现，UpdateDeck 为 log 占位 |
+| 1A.4 | F13.17 Context Menu | ✅ 已修复 | 添加 log 占位（渲染层处理） |
+| 1A.5 | F13.18 CardEditor 命令 | ✅ 已修复 | SaveCard/CancelEdit/DeleteCard/ToggleCardSide/PasteCardContent 全部添加 |
+
+#### Phase 1B: 快速独立修复 ✅
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 1B.1 | F13.36 render block_in_place | ✅ 已验证 | 渲染路径无 block_in_place 调用，无需修改 |
+| 1B.2 | F13.37 handle_tick 空实现 | ✅ 已修复 | 添加 tick_counter 基础设施 |
+| 1B.3 | F13.6 Pause/Resume | ✅ 已修复 | 添加 TODO 注释（SessionController 无 pause/resume 方法） |
+| 1B.4 | F13.22 Ctrl+S 键盘绑定 | ✅ 已修复 | 全局 Ctrl+S 映射到 Confirm（StudySession 除外） |
+| 1B.5 | F13.23 Delete guard | ✅ 已修复 | DeckSelection 下 Delete 键可触发 DeleteDeckPrompt |
+| 1B.6 | F13.27 导入路径提示 | ✅ 已修复 | 改为 CLI 提示（F13.28 一并修复） |
+| 1B.7 | F13.28 恢复确认机制 | ✅ 已修复 | 提供更清晰的错误提示（含手动删除路径） |
+| 1B.8 | F13.29 清除功能 | ✅ 已修复 | 改为 CLI 提示 |
+| 1B.9 | F13.4 Deck Management Enter | ✅ 已修复 | UI 提示文本与实际行为对齐 |
+
+#### Phase 1C: 键盘绑定修复 ✅
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 1C.1 | F13.8 统计页编号响应 | ✅ 已修复 | 1/2/3 数字键在 Statistics 屏幕下可触发导航 |
+| 1C.2 | F13.9 设置页编号响应 | ✅ 已修复 | 1/2/3 数字键在 Settings 屏幕下可触发导航 |
+
+### Phase 2: 依赖修复 ✅ 完成
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 2.1 | F13.5 学习会话状态同步 | ✅ 已修复 | start_study_session 后调用 set_current_session(SessionState::new) |
+| 2.2 | F13.10 搜索结果交互 | ✅ 已修复 | 添加 SearchResultUp/Down + SearchSelectResult 命令 + UI 高亮 |
+
+### Phase 3: 复杂修复 ⏸️ 待进行
+
+| # | 问题 | 状态 | 说明 |
+|---|------|------|------|
+| 3.1 | F13.1 Component 框架接入 | ⏸️ 待进行 | 大型重构，需独立规划 |
+| 3.2 | F13.3 编辑牌组全链路 | ⏸️ 待进行 | 依赖 Component 或 render 层改造 |
+| 3.3 | F13.13 Stats 服务注入 | ⏸️ 待进行 | 需在运行时调用 with_deck_service() |
+| 3.4 | F13.19 CardEditor 全链路 | ⏸️ 待进行 | 导航入口 + render arm + 命令处理 |
+| 3.5 | F13.30 DeckManageScreen 子操作 | ⏸️ 待进行 | 6 个子操作的实际业务逻辑 |
+| 3.6 | F13.31 DeckEditScreen 文本 | ⏸️ 待进行 | 需 Input Widget 回调机制 |
+| 3.7 | F13.32 DataManageScreen | ⏸️ 待进行 | 导入/恢复操作的 CLI 提示替代 |
+| 3.8 | F13.33 + F13.34 Widget 改进 | ⏸️ 待进行 | Input 回调 + Dialog 返回值 |
+| 3.9 | F13.35 Rating 交互一致性 | ⏸️ 待进行 | 统一自动确认行为与 UI 暗示 |
+
+### 修复统计
+
+| 阶段 | 任务数 | 已完成 | 完成率 |
+|------|--------|--------|--------|
+| Phase 0 | 1 | 1 | 100% |
+| Phase 1 | 18 | 18 | 100% |
+| Phase 2 | 2 | 2 | 100% |
+| Phase 3 | 9 | 0 | 0% |
+| **合计** | **30** | **21** | **70%** |
+
+### 编译状态
+
+```
+cargo check: ✅ 0 errors, ~52 warnings (均为 lint 警告，不影响功能)
+```

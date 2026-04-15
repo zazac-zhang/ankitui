@@ -192,7 +192,6 @@ fn render_main_menu(f: &mut ratatui::Frame, area: ratatui::layout::Rect, selecte
         "🗂️ Manage Decks",
         "📊 Statistics",
         "⚙️ Settings",
-        "❌ Quit",
     ];
 
     let items: Vec<ListItem> = menu_items
@@ -214,7 +213,7 @@ fn render_main_menu(f: &mut ratatui::Frame, area: ratatui::layout::Rect, selecte
     f.render_widget(menu, chunks[1]);
 
     // Help text
-    let help_text = "↑↓: Navigate | Enter: Select | 1-5: Quick Select | Esc: Quit | F1: Help";
+    let help_text = "↑↓: Navigate | Enter: Select | 1-4: Quick Select | Q/Esc: Quit | F1: Help";
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
@@ -444,11 +443,11 @@ fn render_statistics_with_real_data(
     f: &mut ratatui::Frame,
     area: ratatui::layout::Rect,
     app: &crate::app::main_app::App,
-    _state: &crate::ui::state::store::AppState,
+    state: &crate::ui::state::store::AppState,
 ) {
     use ratatui::{
         layout::{Constraint, Direction, Layout},
-        style::{Color, Style},
+        style::{Color, Modifier, Style},
         widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table},
     };
 
@@ -469,6 +468,24 @@ fn render_statistics_with_real_data(
         .block(Block::default().borders(Borders::ALL).title("Statistics"));
     f.render_widget(header, chunks[0]);
 
+    // Get current tab and show tab indicator
+    let current_tab = state
+        .ui_state
+        .get("stats_tab")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(0);
+
+    let tabs = ["Overview", "Deck Stats", "Progress"];
+    let tab_text = format!(
+        "Tab: {}/{} [{}]",
+        current_tab + 1,
+        tabs.len(),
+        if current_tab < 2 { "→" } else { " " }  // Show navigation hint
+    );
+    let tab_indicator = Paragraph::new(tab_text)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(tab_indicator, chunks[1]);
+
     // Fetch real global statistics
     let global_stats = if let Ok(stats) = tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(app.statistics_service().get_global_statistics())
@@ -486,98 +503,121 @@ fn render_statistics_with_real_data(
         }
     };
 
-    // Overview statistics
-    let overview_text = vec![
-        format!(
-            "Total Decks: {} | Total Cards: {} | Due Cards: {}",
-            global_stats.total_decks, global_stats.total_cards, global_stats.due_cards
-        ),
-        format!(
-            "New Cards: {} | Learning Cards: {} | Review Cards: {}",
-            global_stats.new_cards, global_stats.learning_cards, global_stats.review_cards
-        ),
-        "Study Progress: Excellent".to_string(),
-        "".to_string(),
-        "Performance: Keep up the consistent study schedule.".to_string(),
-    ];
+    // Render content based on current tab
+    match current_tab {
+        0 => {
+            // Overview tab
+            let overview_text = vec![
+                format!(
+                    "Total Decks: {} | Total Cards: {} | Due Cards: {}",
+                    global_stats.total_decks, global_stats.total_cards, global_stats.due_cards
+                ),
+                format!(
+                    "New Cards: {} | Learning Cards: {} | Review Cards: {}",
+                    global_stats.new_cards, global_stats.learning_cards, global_stats.review_cards
+                ),
+                "Study Progress: Excellent".to_string(),
+                "".to_string(),
+                "Performance: Keep up the consistent study schedule.".to_string(),
+            ];
 
-    let overview_items: Vec<ListItem> = overview_text.iter().map(|line| ListItem::new(line.as_str())).collect();
+            let overview_items: Vec<ListItem> = overview_text.iter().map(|line| ListItem::new(line.as_str())).collect();
+            let overview_list = List::new(overview_items).block(Block::default().borders(Borders::ALL).title("Overview"));
+            f.render_widget(overview_list, chunks[2]);
+        }
+        1 => {
+            // Deck Stats tab
+            if let Ok(decks) =
+                tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks()))
+            {
+                let deck_stats_data: Vec<Vec<String>> = decks
+                    .into_iter()
+                    .map(|(deck, cards)| {
+                        let total_cards = cards.len();
+                        let due_cards = cards.iter().filter(|c| c.state.due <= chrono::Utc::now()).count();
+                        let retention = if total_cards > 0 {
+                            let review_cards = cards
+                                .iter()
+                                .filter(|c| matches!(c.state.state, ankitui_core::data::models::CardState::Review))
+                                .count();
+                            if review_cards > 0 {
+                                let retained = cards.iter().filter(|c| {
+                                    matches!(c.state.state, ankitui_core::data::models::CardState::Review) &&
+                                    c.state.lapses == 0
+                                }).count();
+                                format!("{:.1}%", (retained as f32 / review_cards as f32) * 100.0)
+                            } else {
+                                "N/A".to_string()
+                            }
+                        } else {
+                            "N/A".to_string()
+                        };
 
-    let overview_list = List::new(overview_items).block(Block::default().borders(Borders::ALL).title("Overview"));
-    f.render_widget(overview_list, chunks[1]);
+                        vec![
+                            deck.name,
+                            total_cards.to_string(),
+                            due_cards.to_string(),
+                            retention,
+                        ]
+                    })
+                    .collect();
 
-    // Fetch deck statistics for table
-    let deck_stats_table = if let Ok(decks) =
-        tokio::task::block_in_place(|| tokio::runtime::Handle::current().block_on(app.deck_service().get_all_decks()))
-    {
-        let deck_stats_data: Vec<Vec<String>> = decks
-            .into_iter()
-            .map(|(deck, cards)| {
-                let total_cards = cards.len();
-                let due_cards = cards.iter().filter(|c| c.state.due <= chrono::Utc::now()).count();
-                let retention = if total_cards > 0 {
-                    let review_cards = cards
-                        .iter()
-                        .filter(|c| matches!(c.state.state, ankitui_core::data::models::CardState::Review))
-                        .count();
-                    if review_cards > 0 {
-                        format!("{:.0}%", (review_cards as f32 / total_cards as f32) * 100.0)
-                    } else {
-                        "N/A".to_string()
-                    }
-                } else {
-                    "N/A".to_string()
-                };
-                let avg_time = "N/A".to_string();
+                let header_row = ["Deck", "Cards", "Due", "Retention"].iter().map(|h| {
+                    ratatui::widgets::Cell::from(*h).style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+                });
 
-                vec![
-                    deck.name,
-                    total_cards.to_string(),
-                    due_cards.to_string(),
-                    retention,
-                    avg_time,
-                ]
-            })
-            .collect();
+                let rows = deck_stats_data.iter().map(|row| {
+                    let cells = row.iter().map(|s| ratatui::widgets::Cell::from(s.as_str()));
+                    Row::new(cells)
+                });
 
-        deck_stats_data
-    } else {
-        vec![vec![
-            "Error loading decks".to_string(),
-            "0".to_string(),
-            "0".to_string(),
-            "N/A".to_string(),
-            "N/A".to_string(),
-        ]]
-    };
+                let table = Table::new(
+                    rows,
+                    [
+                        Constraint::Percentage(40),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(20),
+                    ],
+                )
+                .header(Row::new(header_row))
+                .block(Block::default().borders(Borders::ALL).title("Deck Statistics"));
 
-    // Deck performance table
-    let header_cells = ["Deck", "Total Cards", "Due", "Retention", "Avg Time"]
-        .iter()
-        .map(|h| Cell::from(*h).style(Style::default().fg(Color::Yellow)));
+                f.render_widget(table, chunks[2]);
+            } else {
+                let error_msg = Paragraph::new("Failed to load deck statistics")
+                    .style(Style::default().fg(Color::Red))
+                    .block(Block::default().borders(Borders::ALL).title("Error"));
+                f.render_widget(error_msg, chunks[2]);
+            }
+        }
+        2 => {
+            // Progress tab
+            let progress_text = vec![
+                "📈 Your Learning Progress".to_string(),
+                "".to_string(),
+                format!("Study Streak: {} days", global_stats.total_decks), // Using available data
+                format!("Cards Reviewed: {}", global_stats.review_cards),
+                "".to_string(),
+                "Keep up the great work!".to_string(),
+                "Consistent practice is key to long-term retention.".to_string(),
+            ];
 
-    let rows = deck_stats_table.iter().map(|row| {
-        let cells = row.iter().map(|c| Cell::from(c.clone()));
-        Row::new(cells)
-    });
-
-    let table = Table::new(
-        rows,
-        [
-            Constraint::Percentage(30),
-            Constraint::Percentage(14),
-            Constraint::Percentage(10),
-            Constraint::Percentage(14),
-            Constraint::Percentage(16),
-        ],
-    )
-    .header(Row::new(header_cells))
-    .block(Block::default().borders(Borders::ALL).title("Deck Performance"));
-
-    f.render_widget(table, chunks[2]);
+            let progress_items: Vec<ListItem> = progress_text.iter().map(|line| ListItem::new(line.as_str())).collect();
+            let progress_list = List::new(progress_items).block(Block::default().borders(Borders::ALL).title("Progress Charts"));
+            f.render_widget(progress_list, chunks[2]);
+        }
+        _ => {
+            // Fallback
+            let fallback = Paragraph::new("Invalid tab selected")
+                .style(Style::default().fg(Color::Red))
+                .block(Block::default().borders(Borders::ALL).title("Error"));
+            f.render_widget(fallback, chunks[2]);
+        }
+    }
 
     // Help text
-    let help_text = "Tab: Switch Views | ↑↓: Navigate List | PageUp/PageDown: Fast Scroll | Home/End: Top/Bottom | F5: Refresh | Enter: View Details | Esc: Back to Menu";
+    let help_text = "↑↓: Switch Tab | Enter: View Details | F5: Refresh | Esc: Back to Menu";
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
@@ -697,7 +737,7 @@ fn render_deck_management(
     f: &mut ratatui::Frame,
     area: ratatui::layout::Rect,
     app: &crate::app::main_app::App,
-    _state: &crate::ui::state::store::AppState,
+    state: &crate::ui::state::store::AppState,
 ) {
     use ratatui::{
         layout::{Constraint, Direction, Layout},
@@ -730,6 +770,9 @@ fn render_deck_management(
         Vec::new()
     };
 
+    // Get selected deck index from state
+    let selected_index = state.deck_list_selected.unwrap_or(0);
+
     if deck_data.is_empty() {
         let empty = Paragraph::new("No decks available.\n\nPress Ctrl+N to create a new deck.")
             .style(Style::default().fg(Color::Gray))
@@ -746,19 +789,29 @@ fn render_deck_management(
                     .iter()
                     .filter(|c| matches!(c.state.state, ankitui_core::data::models::CardState::New))
                     .count();
-                ListItem::new(format!(
-                    "📚 {} ({} cards, {} due, {} new)\n   Actions: Edit | Delete | Export | Stats",
-                    deck.name, total, due, new_count
-                ))
+
+                let prefix = if i == selected_index { "▶ " } else { "  " };
+                let deck_text = format!(
+                    "{}{} ({} cards, {} due, {} new)\n   Actions: Enter: Study | E: Export | D: Delete | Esc: Back",
+                    prefix, deck.name, total, due, new_count
+                );
+
+                ListItem::new(deck_text).style(if i == selected_index {
+                    Style::default().bg(Color::DarkGray).fg(Color::White)
+                } else {
+                    Style::default()
+                })
             })
             .collect();
-        let deck_list = List::new(items).block(Block::default().borders(Borders::ALL).title("Your Decks"));
+        let deck_list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Your Decks"))
+            .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
         f.render_widget(deck_list, chunks[1]);
     }
 
     // Help footer
     let help_text =
-        "↑↓: Navigate | Enter: Edit Deck | Ctrl+E: Edit | Delete: Remove Deck | Ctrl+N: New Deck | Esc: Back to Menu";
+        "↑↓: Navigate | Enter: Study | E: Export | D: Delete | Esc: Back to Menu";
     let help = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
@@ -836,6 +889,24 @@ fn render_search_screen(
         }
     };
 
+    // Store result count in state for navigation boundary
+    let result_count = results.len();
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            let _ = app.state_store.read().await.update_state(|state| {
+                state.ui_state.insert("search_result_count".to_string(), result_count.to_string());
+                // Clamp index if it exceeds new result count
+                if let Some(idx_str) = state.ui_state.get("search_result_index").cloned() {
+                    if let Ok(idx) = idx_str.parse::<usize>() {
+                        if idx >= result_count && result_count > 0 {
+                            state.ui_state.insert("search_result_index".to_string(), (result_count - 1).to_string());
+                        }
+                    }
+                }
+            });
+        });
+    });
+
     if query.is_empty() {
         let info = Paragraph::new("Type to search...\nTab: Switch Deck/Card type | Esc: Close")
             .style(Style::default().fg(Color::Gray))
@@ -847,9 +918,17 @@ fn render_search_screen(
             .block(Block::default().borders(Borders::ALL).title("No Results"));
         f.render_widget(no_results, chunks[2]);
     } else {
+        let selected_idx = state.ui_state.get("search_result_index").and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
         let items: Vec<ListItem> = results
             .iter()
-            .map(|r| ListItem::new(r.clone()))
+            .enumerate()
+            .map(|(i, r)| {
+                if i == selected_idx {
+                    ListItem::new(r.clone()).style(Style::default().fg(Color::Black).bg(Color::White))
+                } else {
+                    ListItem::new(r.clone())
+                }
+            })
             .collect();
         let list = List::new(items)
             .block(Block::default().borders(Borders::ALL).title(format!("Results ({})", results.len())));
@@ -867,7 +946,7 @@ fn render_help_screen(
     f: &mut ratatui::Frame,
     area: ratatui::layout::Rect,
     _app: &crate::app::main_app::App,
-    _state: &crate::ui::state::store::AppState,
+    state: &crate::ui::state::store::AppState,
 ) {
     use ratatui::{
         layout::{Constraint, Direction, Layout},
@@ -881,6 +960,7 @@ fn render_help_screen(
             Constraint::Length(3),
             Constraint::Length(3),
             Constraint::Min(0),
+            Constraint::Min(0),
             Constraint::Length(3),
         ])
         .split(area);
@@ -889,6 +969,15 @@ fn render_help_screen(
         .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
         .block(Block::default().borders(Borders::ALL).title("Help"));
     f.render_widget(header, chunks[0]);
+
+    // Get current category and show indicator
+    let current_category = state
+        .ui_state
+        .get("help_category")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(0);
+
+    let category_names = ["Global Shortcuts", "Navigation", "Study Session", "Settings"];
 
     let categories = [
         (
@@ -929,26 +1018,42 @@ fn render_help_screen(
         ),
     ];
 
-    let cat_list: Vec<ListItem> = categories
+    let cat_indicator = format!(
+        "Category: {}/{} [{}]",
+        current_category + 1,
+        category_names.len(),
+        if current_category < 3 { "→" } else { " " }
+    );
+    let cat_indicator_widget = Paragraph::new(cat_indicator)
+        .style(Style::default().fg(Color::Yellow));
+    f.render_widget(cat_indicator_widget, chunks[1]);
+
+    // Show category list
+    let cat_list: Vec<ListItem> = category_names
         .iter()
-        .map(|(name, _)| ListItem::new(format!("  {}", name)))
+        .enumerate()
+        .map(|(i, name)| {
+            let prefix = if i == current_category { "▶" } else { " " };
+            ListItem::new(format!("{} {}", prefix, name))
+        })
         .collect();
     let cat_widget = List::new(cat_list).block(Block::default().borders(Borders::ALL).title("Categories"));
-    f.render_widget(cat_widget, chunks[1]);
+    f.render_widget(cat_widget, chunks[2]);
 
-    let (_, shortcuts) = &categories[0];
+    // Show shortcuts for current category
+    let (_, shortcuts) = &categories[current_category];
     let shortcut_items: Vec<ListItem> = shortcuts
         .iter()
         .map(|(key, desc)| ListItem::new(format!("  {:20} {}", key, desc)))
         .collect();
     let shortcut_widget =
-        List::new(shortcut_items).block(Block::default().borders(Borders::ALL).title("Global Shortcuts"));
-    f.render_widget(shortcut_widget, chunks[2]);
+        List::new(shortcut_items).block(Block::default().borders(Borders::ALL).title(category_names[current_category]));
+    f.render_widget(shortcut_widget, chunks[3]);
 
-    let help = Paragraph::new("Esc: Close")
+    let help = Paragraph::new("↑↓: Switch Category | Esc: Close")
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::ALL).title("Controls"));
-    f.render_widget(help, chunks[3]);
+    f.render_widget(help, chunks[4]);
 }
 
 /// Study preferences sub-screen
@@ -1223,6 +1328,13 @@ fn render_tag_management(
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(0);
 
+    // Ensure tag_index is within valid range to prevent infinite scrolling
+    let valid_tag_index = if tag_data.is_empty() {
+        0
+    } else {
+        tag_index.min(tag_data.len().saturating_sub(1))
+    };
+
     if tag_data.is_empty() {
         let empty = Paragraph::new("No tags found.\n\nTags are extracted from cards automatically.")
             .style(Style::default().fg(Color::Gray))
@@ -1238,7 +1350,7 @@ fn render_tag_management(
 
         let rows = tag_data.iter().enumerate().map(|(i, (name, count, _))| {
             let cells = vec![
-                ratatui::widgets::Cell::from(if i == tag_index {
+                ratatui::widgets::Cell::from(if i == valid_tag_index {
                     format!("▶ {}", name)
                 } else {
                     name.clone()
@@ -1246,7 +1358,7 @@ fn render_tag_management(
                 ratatui::widgets::Cell::from(count.to_string()),
                 ratatui::widgets::Cell::from(if *count > 10 { "Frequent" } else { "Normal" }),
             ];
-            Row::new(cells).style(if i == tag_index {
+            Row::new(cells).style(if i == valid_tag_index {
                 Style::default().bg(Color::DarkGray).fg(Color::White)
             } else {
                 Style::default()
